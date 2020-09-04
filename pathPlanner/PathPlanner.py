@@ -96,5 +96,22 @@ class PathPlanner:
             print('joint angles:', self.q, '   position:', self.x)
         return 1
     
-a = PathPlanner([np.pi,0.02,0.01])
-th_log  = a.followPoint()
+# test here with a simple square path
+# four points to follow
+paths = [[0., 0., 0.01], 
+        [-np.pi/2, 0., 0.01],
+        [-np.pi/2, 0.01, 0.01],
+        [-np.pi, 0.01, 0.01],
+        [-np.pi, 0.01, 0.0],
+        [-np.pi*3/2, 0.01, 0.0],
+        [-np.pi*3/2, 0.0, 0.0],
+        ]
+
+import time
+a = PathPlanner([0,0,0])
+for count, path in enumerate(paths):
+    a.x_target = path 
+    th_log  = a.followPoint()
+    print('point {0} reached'.format(count))
+    time.sleep(1)
+    
