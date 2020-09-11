@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 from thorpy.comm.discovery import discover_stages
 
 if __name__ == '__main__':
@@ -5,7 +6,17 @@ if __name__ == '__main__':
     
     stages = list(discover_stages())
     print(stages)
-    s = stages[0]
+    s0 = stages[0]
+    s1 = stages[1]
+
+    s0._set_homeparams(10000, s0.home_direction, s0.home_limit_switch, s0.home_offset_distance)
+    s1._set_homeparams(10000, s1.home_direction, s1.home_limit_switch, s1.home_offset_distance)
+
+    s0.home_non_blocking()
+    s1.home_non_blocking()
+
+    p0 = s0._port
+    p1 = s1._port
     
     # s.home()
     

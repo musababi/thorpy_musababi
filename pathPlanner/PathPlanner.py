@@ -1,5 +1,8 @@
 import numpy as np
 import scipy.linalg
+import rospy
+from std_msgs.msg import Float64MultiArray, String
+
 class PathPlanner:
     def __init__(self, x_target):
         self.S = [[0,0,-1,0,0,0], [0,0,0,0,-1,0], [0,0,0,-1,0,0]]   # basic joint configurations as Screws seen by gelatin
@@ -7,7 +10,7 @@ class PathPlanner:
         self.x = np.array([0.0, 0.0, 0.0])    # Manipulator space: theta, x, y of the robot seen by gelatin
         self.w = np.pi/180*30       # angular speed         
         self.v = 0.005              # translation speed
-        self.dt = 0.001 
+        self.dt = 0.05         
         self.x_target = x_target    # goal position
                 
     def skewSym(self, v):
@@ -92,8 +95,15 @@ class PathPlanner:
             dq = np.matmul(np.linalg.inv(self.spatialJacobian()), V)
             
             self.q += dq    # joint space update
-            
-            print('joint angles:', self.q, '   position:', self.x)
+            time.sleep(self.dt)
+            converted_joint_angles = [self.q[0], self.w, self.q[1]*1000., self.v*1000., self.q[2]*1000., self.v*1000.]
+
+            pos_vel = Float64MultiArray()
+            pos_vel.data = converted_joint_angles
+            pub.publish(pos_vel)
+
+
+            print('joint angles:', converted_joint_angles, '   position:', self.x)
         return 1
     
 # test here with a simple square path
@@ -106,6 +116,10 @@ paths = [[0., 0., 0.01],
         [-np.pi*3/2, 0.01, 0.0],
         [-np.pi*3/2, 0.0, 0.0],
         ]
+
+rospy.init_node('master_node', anonymous=True)
+global pub
+pub = rospy.Publisher('coordinates', Float64MultiArray, queue_size=10)
 
 import time
 a = PathPlanner([0,0,0])

@@ -69,7 +69,7 @@ void messageResponse(const std_msgs::Float64MultiArray& step_msg)
   Serial.print(initialByte);*/
 }
 
-ros::Subscriber<std_msgs::Float64MultiArray> sub("stepper_one_rev", &messageResponse );
+ros::Subscriber<std_msgs::Float64MultiArray> sub("stepper_go", &messageResponse );
 
 //////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////  T H E    S E T U P  ////////////////////////////////////
@@ -84,7 +84,7 @@ void setup() {
 
   // Then give them to MultiStepper to manage
   
-  absolute = 3200;
+  absolute = 0;
   stepperA.setAcceleration(5000.0);
   stepperA.setSpeed(200);
   stepperA.moveTo(absolute);
