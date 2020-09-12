@@ -1,17 +1,19 @@
 import numpy as np
 import scipy.linalg
-import rospy
-from std_msgs.msg import Float64MultiArray, String
 
 class PathPlanner:
     def __init__(self, x_target):
-        self.S = [[0,0,-1,0,0,0], [0,0,0,0,-1,0], [0,0,0,-1,0,0]]   # basic joint configurations as Screws seen by gelatin
-        self.q = [0.0,0.0,0.0]       # actuation system joint space: theta, x, y
+        self.S = [[0,0,-1,0,0,0], [0,0,0,0,-1,0], [0,0,0,-1,0,0]]   # basic joint configurations as Screws seen by gelatin (order of theta, y, x)
+        self.S_table = [[0,0,0,1,0,0], [0,0,0,0,1,0], [0,0,1,0,0,0]]   # basic joint configurations as Screws seen by gelatin (order of x, y, theta)
+        
+       
+        self.q = np.array([0.0,0.0,0.0])       # actuation system joint space: theta, y, x 
         self.x = np.array([0.0, 0.0, 0.0])    # Manipulator space: theta, x, y of the robot seen by gelatin
-        self.w = np.pi/180*30       # angular speed         
+        self.w = np.pi/180*10       # angular speed         
         self.v = 0.005              # translation speed
         self.dt = 0.05         
         self.x_target = x_target    # goal position
+        self.q_log = []
                 
     def skewSym(self, v):
         
@@ -67,7 +69,7 @@ class PathPlanner:
         diff = self.x_target - self.x        # this includes angular distance
         
         dxy = diff[1:]
-        dtheta = diff[0]
+        dtheta = np.sin(diff[0])
         
         position_error = np.linalg.norm(dxy)
         
@@ -76,16 +78,20 @@ class PathPlanner:
         else:
             self.xy_direction = np.array([0.0,0.0])
         
-        if abs(dtheta) > np.pi/180/10:
-            self.th_direction = dtheta/abs(dtheta)
+        if abs(dtheta) > np.sin(np.pi/180/10):
+            v_target = [np.cos(self.x_target[0]), np.sin(self.x_target[0])]
+            v = [np.cos(self.x[0]), np.sin(self.x[0])]
+            
+            self.th_direction = np.cross(v, v_target)
         else:
             self.th_direction = 0
             
-        return position_error < 0.001 and abs(dtheta) < np.pi/90
+        return position_error < 0.0005 and abs(dtheta) < np.pi/90
         
         
     
-    def followPoint(self):
+    def followPoint(self, publish = True):
+        
         while not self.checkArrivalAndDirection():
             self.fwdKinematics()                                    
             v_xy = self.xy_direction * self.v * self.dt
@@ -95,17 +101,76 @@ class PathPlanner:
             dq = np.matmul(np.linalg.inv(self.spatialJacobian()), V)
             
             self.q += dq    # joint space update
-            time.sleep(self.dt)
-            converted_joint_angles = [self.q[0], self.w, self.q[1]*1000., self.v*1000., self.q[2]*1000., self.v*1000.]
+            
+            # note that the published message has q0, q2, q1 : theta, x, y
+            converted_joint_angles = [self.q[0], self.w, self.q[2]*1000., self.v*1000., self.q[1]*1000., self.v*1000.]
+                
+            if publish is True:                
+                pos_vel = Float64MultiArray()
+                pos_vel.data = converted_joint_angles
+                pub.publish(pos_vel)
+                time.sleep(self.dt)
 
-            pos_vel = Float64MultiArray()
-            pos_vel.data = converted_joint_angles
-            pub.publish(pos_vel)
-
-
-            print('joint angles:', converted_joint_angles, '   position:', self.x)
+            print('joint angles: %.2f %.2f %.2f %.2f %.2f %.2f '%(converted_joint_angles[0], converted_joint_angles[1], 
+                                                                  converted_joint_angles[2], converted_joint_angles[3], converted_joint_angles[4], converted_joint_angles[5]
+                                                                  ), '   position:', self.x)            
+            if publish is False:
+                self.q_log.append(self.q.tolist())
+            
+            
         return 1
     
+    
+        
+    def fwdKinematics_from_table(self, q):
+        SB1 = self.screwToLA(self.S_table[0])
+        SB2 = self.screwToLA(self.S_table[1])
+        SB3 = self.screwToLA(self.S_table[2])
+        
+        T1 = scipy.linalg.expm(SB1*q[2])
+        T2 = scipy.linalg.expm(SB2*q[1])
+        T3 = scipy.linalg.expm(SB3*q[0])
+        T = np.matmul(np.matmul(T1, T2), T3)
+        T = np.linalg.inv(T)        
+        x = np.array([q[0], T[0,3], T[1,3]])     # manipulator state update
+        return x
+        
+    
+    def plot_trajectory_from_base(self):
+        import matplotlib.pyplot as plt
+        plt.figure(figsize=(16,8))
+        points = []
+        q_log = np.array(self.q_log)
+        for q in q_log:
+            points.append(self.fwdKinematics_from_table(q))
+        
+        points = np.array(points)            
+        plt.subplot(241)
+        plt.scatter(points[:,1], points[:,2])        
+        plt.title('xy plot')
+        plt.subplot(242)
+        plt.plot(points[:,0])        
+        plt.title('w')
+        plt.subplot(243)
+        plt.plot(points[:,1])        
+        plt.title('x')
+        plt.subplot(244)
+        plt.plot(points[:,2])        
+        plt.title('y')
+        
+        plt.subplot(245)
+        plt.plot(q_log[:, 0])
+        plt.title('theta stage input')
+        
+        plt.subplot(246)
+        plt.plot(q_log[:, 1])
+        plt.title('Y stage input')
+        
+        plt.subplot(247)
+        plt.plot(q_log[:, 2])
+        plt.title('X stage input')
+        
+   
 # test here with a simple square path
 # four points to follow
 paths = [[0., 0., 0.01], 
@@ -117,15 +182,24 @@ paths = [[0., 0., 0.01],
         [-np.pi*3/2, 0.0, 0.0],
         ]
 
-rospy.init_node('master_node', anonymous=True)
-global pub
-pub = rospy.Publisher('coordinates', Float64MultiArray, queue_size=10)
+publish = False
 
+if publish is True:
+    import rospy
+    from std_msgs.msg import Float64MultiArray, String
+    rospy.init_node('master_node', anonymous=True)
+    global pub
+    pub = rospy.Publisher('coordinates', Float64MultiArray, queue_size=10)
+    
 import time
 a = PathPlanner([0,0,0])
 for count, path in enumerate(paths):
     a.x_target = path 
-    th_log  = a.followPoint()
+    a.followPoint(publish)
     print('point {0} reached'.format(count))
     time.sleep(1)
-    
+
+if publish is False:    
+    a.plot_trajectory_from_base()
+        
+
