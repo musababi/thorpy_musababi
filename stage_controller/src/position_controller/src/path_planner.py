@@ -12,9 +12,9 @@ class PathPlanner:
        
         self.q = np.array([0.0,0.0,0.0])       # actuation system joint space: theta, y, x 
         self.x = np.array([0.0, 0.0, 0.0])    # Manipulator space: theta, x, y of the robot seen by gelatin
-        self.w = np.pi/180*20       # angular speed         
-        self.v = 0.020              # translation speed
-        self.dt = 0.001         
+        self.w = np.pi/180*10       # angular speed         
+        self.v = 0.005              # translation speed
+        self.dt = 0.05         
         self.x_target = x_target    # goal position
         self.q_log = []
                 
@@ -81,7 +81,7 @@ class PathPlanner:
         else:
             self.xy_direction = np.array([0.0,0.0])
         
-        if abs(dtheta) > np.sin(np.pi/180./10.):
+        if abs(dtheta) > np.sin(np.pi/180/10):
             v_target = [np.cos(self.x_target[0]), np.sin(self.x_target[0])]
             v = [np.cos(self.x[0]), np.sin(self.x[0])]
             
@@ -107,13 +107,22 @@ class PathPlanner:
             
             # note that the published message has q0, q2, q1 : theta, x, y
             converted_joint_angles = [self.q[0], self.w, self.q[2]*1000., self.v*1000., self.q[1]*1000., self.v*1000.]
-            self.q_log.append(self.q.tolist())
+                
+            if publish is True:                
+                pos_vel = Float64MultiArray()
+                pos_vel.data = converted_joint_angles
+                pub.publish(pos_vel)
+                time.sleep(self.dt)
+
+            print('joint angles: %.2f %.2f %.2f %.2f %.2f %.2f '%(converted_joint_angles[0], converted_joint_angles[1], 
+                                                                  converted_joint_angles[2], converted_joint_angles[3], converted_joint_angles[4], converted_joint_angles[5]
+                                                                  ), '   position:', self.x)            
+            if publish is False:
+                self.q_log.append(self.q.tolist())
+            
             
         return 1
     
-    def filterPath(self):
-        
-            
     
         
     def fwdKinematics_from_table(self, q):
@@ -140,7 +149,7 @@ class PathPlanner:
         
         points = np.array(points)            
         plt.subplot(241)
-        plt.plot(points[:,1], points[:,2])        
+        plt.scatter(points[:,1], points[:,2])        
         plt.title('xy plot')
         plt.subplot(242)
         plt.plot(points[:,0])        
@@ -167,25 +176,16 @@ class PathPlanner:
    
 # test here with a simple square path
 # four points to follow
+paths = [[0., 0., 0.01], 
+        [-np.pi/2, 0., 0.01],
+        [-np.pi/2, 0.01, 0.01],
+        [-np.pi, 0.01, 0.01],
+        [-np.pi, 0.01, 0.0],
+        [-np.pi*3/2, 0.01, 0.0],
+        [-np.pi*3/2, 0.0, 0.0],
+        ]
 
-t = np.linspace(0, 2*np.pi, 20)
-radius = 0.005
-x = np.cos(t)*radius
-y = np.sin(t)*radius
-th = t + np.pi/2
-
-paths = np.concatenate((th[:, None], x[:, None], y[:, None]), axis = 1)
-
-# paths = [[0., 0., 0.01], 
-#         [-np.pi/2, 0., 0.01],
-#         [-np.pi/2, 0.01, 0.01],
-#         [-np.pi, 0.01, 0.01],
-#         [-np.pi, 0.01, 0.0],
-#         [-np.pi*3/2, 0.01, 0.0],
-#         [-np.pi*3/2, 0.0, 0.0],
-#         ]
-
-publish = False
+publish = True
 
 if publish is True:
     import rospy
@@ -200,21 +200,9 @@ for count, path in enumerate(paths):
     a.x_target = path 
     a.followPoint(publish)
     print('point {0} reached'.format(count))
-    #time.sleep(1)
+    time.sleep(1)
 
 if publish is False:    
     a.plot_trajectory_from_base()
         
 
-                
-            if publish is True:                
-                pos_vel = Float64MultiArray()
-                pos_vel.data = converted_joint_angles
-                pub.publish(pos_vel)
-                time.sleep(self.dt)
-
-            # print('joint angles: %.2f %.2f %.2f %.2f %.2f %.2f '%(converted_joint_angles[0], converted_joint_angles[1], 
-                                                                  # converted_joint_angles[2], converted_joint_angles[3], converted_joint_angles[4], converted_joint_angles[5]
-                                                                  # ), '   position:', self.x)            
-            if publish is False:
-                
