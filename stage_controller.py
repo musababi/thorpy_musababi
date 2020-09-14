@@ -62,13 +62,13 @@ if __name__ == '__main__':
     p0 = s0._port # serial port of stage 0
     p1 = s1._port # serial port of stage 1
 
-    s0.print_state()
-    s1.print_state()
-
-    s0._set_homeparams(10000, s0.home_direction, s0.home_limit_switch, s0.home_offset_distance)
-    s1._set_homeparams(10000, s1.home_direction, s1.home_limit_switch, s1.home_offset_distance)
+    s0._set_homeparams(10000, 1, s0.home_limit_switch, s0.home_offset_distance)
+    s1._set_homeparams(10000, 1, s1.home_limit_switch, s1.home_offset_distance)
     s0._set_velparams(0, 25000, 100000)
     s1._set_velparams(0, 25000, 100000)
+
+    s0.print_state()
+    s1.print_state()
 
     s0.home()
     s1.home()

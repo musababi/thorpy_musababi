@@ -6,22 +6,26 @@ if __name__ == '__main__':
     
     stages = list(discover_stages())
     print(stages)
-    s0 = stages[0]
-    s1 = stages[1]
+    if stages[0]._port.serial_number == 45875796:
+        s0 = stages[0]
+        s1 = stages[1]
+    else:
+        s0 = stages[1]
+        s1 = stages[0]
 
     p0 = s0._port
     p1 = s1._port
 
-    s0._set_homeparams(10000, s0.home_direction, s0.home_limit_switch, s0.home_offset_distance)
-    s1._set_homeparams(10000, s1.home_direction, s1.home_limit_switch, s1.home_offset_distance)
+    s0._set_homeparams(10000, 1, s0.home_limit_switch, s0.home_offset_distance)
+    s1._set_homeparams(10000, 1, s1.home_limit_switch, s1.home_offset_distance)
     s0._set_velparams(0, 25000, 100000)
     s1._set_velparams(0, 25000, 100000)
 
-    s0.home()
-    s1.home()
+    # s0.home()
+    # s1.home()
 
-    p0.send_message(MGMSG_MOT_MOVE_ABSOLUTE_long(s0._chan_ident, 60000000))
-    p1.send_message(MGMSG_MOT_MOVE_ABSOLUTE_long(s0._chan_ident, 60000000))
+    # p0.send_message(MGMSG_MOT_MOVE_ABSOLUTE_long(s0._chan_ident, 60000000))
+    # p1.send_message(MGMSG_MOT_MOVE_ABSOLUTE_long(s0._chan_ident, 60000000))
     
     # s.home()
     
