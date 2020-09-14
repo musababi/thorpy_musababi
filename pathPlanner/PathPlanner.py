@@ -1,5 +1,8 @@
+#!/usr/bin/env python3
 import numpy as np
 import scipy.linalg
+import rospy
+from std_msgs.msg import Float64MultiArray, String
 
 class PathPlanner:
     def __init__(self, x_target):
