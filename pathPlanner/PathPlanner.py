@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 import numpy as np
 import scipy.linalg
-import rospy
-from std_msgs.msg import Float64MultiArray, String
 
 class PathPlanner:
     def __init__(self, x_target):
@@ -111,9 +109,6 @@ class PathPlanner:
             
         return 1
     
-    def filterPath(self):
-        
-            
     
         
     def fwdKinematics_from_table(self, q):
@@ -158,11 +153,11 @@ class PathPlanner:
         
         plt.subplot(246)
         plt.plot(q_log[:, 1])
-        plt.title('Y stage input')
+        plt.title('X stage input')
         
         plt.subplot(247)
         plt.plot(q_log[:, 2])
-        plt.title('X stage input')
+        plt.title('Y stage input')
         
    
 # test here with a simple square path
@@ -174,25 +169,29 @@ x = np.cos(t)*radius
 y = np.sin(t)*radius
 th = t + np.pi/2
 
-paths = np.concatenate((th[:, None], x[:, None], y[:, None]), axis = 1)
+# paths = np.concatenate((th[:, None], x[:, None], y[:, None]), axis = 1)
 
-# paths = [[0., 0., 0.01], 
-#         [-np.pi/2, 0., 0.01],
-#         [-np.pi/2, 0.01, 0.01],
-#         [-np.pi, 0.01, 0.01],
-#         [-np.pi, 0.01, 0.0],
-#         [-np.pi*3/2, 0.01, 0.0],
-#         [-np.pi*3/2, 0.0, 0.0],
-#         ]
+paths = [[0., 0., 0.01], 
+        [-np.pi/2, 0., 0.01],
+        [-np.pi/2, 0.01, 0.01],
+        [-np.pi, 0.01, 0.01],
+        [-np.pi, 0.01, 0.0],
+        [-np.pi*3/2, 0.01, 0.0],
+        [-np.pi*3/2, 0.0, 0.0],
+        ]
+
+paths = np.array(paths)
+
+paths_offset = np.ones_like(np.array(paths)[:,1])*0.005
+
+paths[:,1] -= paths_offset
+paths[:,2] -= paths_offset
+
+paths = paths.tolist()
+
 
 publish = False
 
-if publish is True:
-    import rospy
-    from std_msgs.msg import Float64MultiArray, String
-    rospy.init_node('master_node', anonymous=True)
-    global pub
-    pub = rospy.Publisher('coordinates', Float64MultiArray, queue_size=10)
     
 import time
 a = PathPlanner([0,0,0])
@@ -206,15 +205,21 @@ if publish is False:
     a.plot_trajectory_from_base()
         
 
-                
-            if publish is True:                
-                pos_vel = Float64MultiArray()
-                pos_vel.data = converted_joint_angles
-                pub.publish(pos_vel)
-                time.sleep(self.dt)
 
-            # print('joint angles: %.2f %.2f %.2f %.2f %.2f %.2f '%(converted_joint_angles[0], converted_joint_angles[1], 
-                                                                  # converted_joint_angles[2], converted_joint_angles[3], converted_joint_angles[4], converted_joint_angles[5]
-                                                                  # ), '   position:', self.x)            
-            if publish is False:
+if publish is True:
+    import rospy
+    from std_msgs.msg import Float64MultiArray, String
+    rospy.init_node('master_node', anonymous=True)
+    global pub
+    pub = rospy.Publisher('coordinates', Float64MultiArray, queue_size=10)
+                
+    pos_vel = Float64MultiArray()
+    pos_vel.data = converted_joint_angles
+    pub.publish(pos_vel)
+    time.sleep(self.dt)
+
+# print('joint angles: %.2f %.2f %.2f %.2f %.2f %.2f '%(converted_joint_angles[0], converted_joint_angles[1], 
+                                                      # converted_joint_angles[2], converted_joint_angles[3], converted_joint_angles[4], converted_joint_angles[5]
+                                                      # ), '   position:', self.x)            
+
                 
