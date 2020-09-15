@@ -10,8 +10,8 @@ class PathPlanner:
        
         self.q = np.array([0.0,0.0,0.0])       # actuation system joint space: theta, y, x 
         self.x = np.array([0.0, 0.0, 0.0])    # Manipulator space: theta, x, y of the robot seen by gelatin
-        self.w = np.pi/180*20       # angular speed         
-        self.v = 0.020              # translation speed
+        self.w = np.pi/180.*10.*10      # angular speed         
+        self.v = 0.02              # translation speed
         self.dt = 0.001         
         self.x_target = x_target    # goal position
         self.q_log = []
