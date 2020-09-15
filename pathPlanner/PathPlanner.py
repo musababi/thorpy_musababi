@@ -10,11 +10,14 @@ class PathPlanner:
        
         self.q = np.array([0.0,0.0,0.0])       # actuation system joint space: theta, y, x 
         self.x = np.array([0.0, 0.0, 0.0])    # Manipulator space: theta, x, y of the robot seen by gelatin
+
         self.w = np.pi/180.*10.*10      # angular speed         
         self.v = 0.02              # translation speed
         self.dt = 0.001         
+
         self.x_target = x_target    # goal position
         self.q_log = []
+        self.converted_joint_angles = []
                 
     def skewSym(self, v):
         
@@ -106,6 +109,7 @@ class PathPlanner:
             # note that the published message has q0, q2, q1 : theta, x, y
             converted_joint_angles = [self.q[0], self.w, self.q[2]*1000., self.v*1000., self.q[1]*1000., self.v*1000.]
             self.q_log.append(self.q.tolist())
+            self.converted_joint_angles.append(converted_joint_angles)
             
         return 1
     
@@ -158,6 +162,8 @@ class PathPlanner:
         plt.subplot(247)
         plt.plot(q_log[:, 2])
         plt.title('Y stage input')
+
+        plt.show()
         
    
 # test here with a simple square path
@@ -171,7 +177,10 @@ th = t + np.pi/2
 
 # paths = np.concatenate((th[:, None], x[:, None], y[:, None]), axis = 1)
 
-paths = [[0., 0., 0.01], 
+paths = [[5*np.pi/4., 0.005, 0.005], 
+        [5*np.pi/4., 0., 0.], 
+        [0., 0., 0.], 
+        [0., 0., 0.01], 
         [-np.pi/2, 0., 0.01],
         [-np.pi/2, 0.01, 0.01],
         [-np.pi, 0.01, 0.01],
@@ -212,11 +221,20 @@ if publish is True:
     rospy.init_node('master_node', anonymous=True)
     global pub
     pub = rospy.Publisher('coordinates', Float64MultiArray, queue_size=10)
-                
-    pos_vel = Float64MultiArray()
-    pos_vel.data = converted_joint_angles
-    pub.publish(pos_vel)
-    time.sleep(self.dt)
+    
+    for i, converted_joint_angles in enumerate(a.converted_joint_angles):
+
+        pos_vel = Float64MultiArray()
+        pos_vel.data = converted_joint_angles
+        pub.publish(pos_vel)
+        time.sleep(a.dt)
+
+
+    
+
+# import IPython
+# IPython.embed()
+
 
 # print('joint angles: %.2f %.2f %.2f %.2f %.2f %.2f '%(converted_joint_angles[0], converted_joint_angles[1], 
                                                       # converted_joint_angles[2], converted_joint_angles[3], converted_joint_angles[4], converted_joint_angles[5]
