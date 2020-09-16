@@ -11,7 +11,7 @@ class PathPlanner:
         self.q = np.array([0.0,0.0,0.0])       # actuation system joint space: theta, y, x 
         self.x = np.array([0.0, 0.0, 0.0])    # Manipulator space: theta, x, y of the robot seen by gelatin
 
-        self.w = np.pi/180.*10.*10      # angular speed         
+        self.w = np.pi/180.*10.*10.      # angular speed         
         self.v = 0.02              # translation speed
         self.dt = 0.001         
 
@@ -86,7 +86,7 @@ class PathPlanner:
             v_target = [np.cos(self.x_target[0]), np.sin(self.x_target[0])]
             v = [np.cos(self.x[0]), np.sin(self.x[0])]
             
-            self.th_direction = np.cross(v, v_target)
+            self.th_direction = np.sign(np.cross(v, v_target))
         else:
             self.th_direction = 0
             
@@ -99,7 +99,7 @@ class PathPlanner:
         while not self.checkArrivalAndDirection():
             self.fwdKinematics()                                    
             v_xy = self.xy_direction * self.v * self.dt
-            w = self.th_direction * self.w * self.dt 
+            w = self.th_direction * self.w * self.dt #- self.x[1]/5*np.pi*self.dt
             V = np.append(w, v_xy)
                         
             dq = np.matmul(np.linalg.inv(self.spatialJacobian()), V)
@@ -166,40 +166,51 @@ class PathPlanner:
         plt.show()
         
    
-# test here with a simple square path
-# four points to follow
 
-t = np.linspace(0, 2*np.pi, 20)
-radius = 0.005
-x = np.cos(t)*radius
-y = np.sin(t)*radius
-th = t + np.pi/2
+# Circle
+# t = np.linspace(0, 2*np.pi, 20)
+# radius = 0.005
+# x = np.cos(t)*radius
+# y = np.sin(t)*radius
+# th = t + np.pi/2
 
 # paths = np.concatenate((th[:, None], x[:, None], y[:, None]), axis = 1)
 
-paths = [[5*np.pi/4., 0.005, 0.005], 
-        [5*np.pi/4., 0., 0.], 
-        [0., 0., 0.], 
-        [0., 0., 0.01], 
-        [-np.pi/2, 0., 0.01],
-        [-np.pi/2, 0.01, 0.01],
-        [-np.pi, 0.01, 0.01],
-        [-np.pi, 0.01, 0.0],
-        [-np.pi*3/2, 0.01, 0.0],
-        [-np.pi*3/2, 0.0, 0.0],
-        ]
 
-paths = np.array(paths)
+# # Square path that starts from center
+# paths = [[7*np.pi/4., 0.005, 0.005], 
+#         [7*np.pi/4., 0., 0.], 
+#         [0., 0., 0.], 
+#         [0., 0., 0.01], 
+#         [-np.pi/2, 0., 0.01],
+#         [-np.pi/2, 0.01, 0.01],
+#         [-np.pi, 0.01, 0.01],
+#         [-np.pi, 0.01, 0.0],
+#         [-np.pi*3/2, 0.01, 0.0],
+#         [-np.pi*3/2, 0.0, 0.0],
+#         ]
 
-paths_offset = np.ones_like(np.array(paths)[:,1])*0.005
+# paths = np.array(paths)
 
-paths[:,1] -= paths_offset
-paths[:,2] -= paths_offset
+# paths_offset = np.ones_like(np.array(paths)[:,1])*0.005
 
-paths = paths.tolist()
+# paths[:,1] -= paths_offset
+# paths[:,2] -= paths_offset
+
+# paths = paths.tolist()
 
 
-publish = False
+# infinity sign
+t = np.linspace(-np.pi/2, 3*np.pi/2, 20)
+radius = 0.007
+x = np.cos(t)*radius
+y = np.cos(t)*np.sin(t)*radius
+th = np.arctan2(np.cos(2*t),-np.sin(t)) - np.pi/2
+
+paths = np.concatenate((th[:, None], x[:, None], y[:, None]), axis = 1)
+
+
+publish = True
 
     
 import time
@@ -222,12 +233,14 @@ if publish is True:
     global pub
     pub = rospy.Publisher('coordinates', Float64MultiArray, queue_size=10)
     
-    for i, converted_joint_angles in enumerate(a.converted_joint_angles):
+    rate = rospy.Rate(1/a.dt)
+
+    for i, converted_joint_angles in enumerate(a.converted_joint_angles[::20]):
 
         pos_vel = Float64MultiArray()
         pos_vel.data = converted_joint_angles
         pub.publish(pos_vel)
-        time.sleep(a.dt)
+        rate.sleep()
 
 
     

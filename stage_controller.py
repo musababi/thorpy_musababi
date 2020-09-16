@@ -3,44 +3,20 @@ from thorpy.comm.discovery import discover_stages
 import rospy
 from std_msgs.msg import Float64MultiArray, String
 
-# def stepperPublisher():
-#     stepper_pos_vel = Float64MultiArray()
-#     stepper_pos_vel.data = [stepper_pos, stepper_vel]
-#     pubStepper.publish(stepper_pos_vel)
-
 def callback(data):
-    global stepper_pos, stepper_vel
-    # stepper_pos = data.data[0]
-    # stepper_vel = data.data[1]
     s0_pos = 10000000.*data.data[2]/24.44 + initial_offset
     s0_vel = 5000.*data.data[3]
     s1_pos = 10000000.*data.data[4]/24.44 + initial_offset
     s1_vel = 5000.*data.data[5]
-    s0._set_velparams(0, s0_vel, s0.acceleration)
-    s1._set_velparams(0, s1_vel, s1.acceleration)
+    if s0_vel != s0.max_velocity:
+        s0._set_velparams(0, s0_vel, s0.acceleration)
+    if s1_vel != s1.max_velocity:
+        s1._set_velparams(0, s1_vel, s1.acceleration)
     p0.send_message(MGMSG_MOT_MOVE_ABSOLUTE_long(s0._chan_ident, int(s0_pos)))
     p1.send_message(MGMSG_MOT_MOVE_ABSOLUTE_long(s0._chan_ident, int(s1_pos)))
 
     stepper_pos_vel.data = [data.data[0], data.data[1]]
     pubStepper.publish(stepper_pos_vel)
-    # stepperPublisher()
-    
-def listener():
-
-    # In ROS, nodes are uniquely named. If two nodes with the same
-    # name are launched, the previous one is kicked off. The
-    # anonymous=True flag means that rospy will choose a unique
-    # name for our 'listener' node so that multiple listeners can
-    # run simultaneously.
-    rospy.init_node('listener', anonymous=True)
-    global pub, pubStepper
-    # pub = rospy.Publisher('stepper_trial', String, queue_size=10)
-    pubStepper = rospy.Publisher('stepper_go', Float64MultiArray, queue_size=10)
-
-    rospy.Subscriber('coordinates', Float64MultiArray, callback)
-
-    # spin() simply keeps python from exiting until this node is stopped
-    rospy.spin()
 
 if __name__ == '__main__':
     from thorpy.message import *
@@ -71,7 +47,7 @@ if __name__ == '__main__':
     s0.print_state()
     s1.print_state()
 
-    s0.home()
+    s0.home_non_blocking()
     s1.home()
 
     initial_offset = 90000000
@@ -79,4 +55,12 @@ if __name__ == '__main__':
     p1.send_message(MGMSG_MOT_MOVE_ABSOLUTE_long(s0._chan_ident, initial_offset))
 
 
-    listener()
+    rospy.init_node('listener', anonymous=True)
+    global pub, pubStepper
+    # pub = rospy.Publisher('stepper_trial', String, queue_size=10)
+    pubStepper = rospy.Publisher('stepper_go', Float64MultiArray, queue_size=10)
+
+    rospy.Subscriber('coordinates', Float64MultiArray, callback)
+
+    # spin() simply keeps python from exiting until this node is stopped
+    rospy.spin()
