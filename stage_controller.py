@@ -4,6 +4,7 @@ import rospy
 from std_msgs.msg import Float64MultiArray, String
 
 def callback(data):
+    # Structure of data: [theta, w, pos0, vel0, pos1, vel1] in rad, rad/s, mm, mm/s
     s0_pos = 10000000.*data.data[2]/24.44 + initial_offset0
     s0_vel = 5000.*data.data[3]
     s1_pos = 10000000.*data.data[4]/24.44 + initial_offset1
@@ -40,7 +41,7 @@ if __name__ == '__main__':
     p1 = s1._port # serial port of stage 1
 
     s0._set_homeparams(10000, 1, s0.home_limit_switch, s0.home_offset_distance)
-    s1._set_homeparams(10000, 0, s1.home_limit_switch, s1.home_offset_distance)
+    s1._set_homeparams(10000, 1, s1.home_limit_switch, s1.home_offset_distance)
     s0._set_velparams(0, 25000, 100000)
     s1._set_velparams(0, 25000, 100000)
 
