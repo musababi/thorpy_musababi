@@ -40,7 +40,7 @@ if __name__ == '__main__':
     while not rospy.is_shutdown():
         coords.data[0] = coords.data[0] + w * dt/1000.
         coords.data[2] = coords.data[2] + v_x * dt/1000.
-        coords.data[4] = coords.data[4] - v_y * dt/1000.
+        coords.data[4] = coords.data[4] + v_y * dt/1000.
         rospy.loginfo("I published. %s"%coords.data)
 
         if publish:
