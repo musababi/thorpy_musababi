@@ -15,7 +15,7 @@ ros::NodeHandle nh;
 void messageResponse(const std_msgs::Float64MultiArray& step_msg)
 {
   digitalWrite(13, HIGH);
-  delay(2000)
+  delay(2000);
   digitalWrite(13, LOW);
 }
 
@@ -27,6 +27,7 @@ ros::Subscriber<std_msgs::Float64MultiArray> sub("coordinates", &messageResponse
 
 void setup() {
   pinMode(13, OUTPUT);
+  digitalWrite(13, LOW);
   
   nh.initNode();
   nh.subscribe(sub);
