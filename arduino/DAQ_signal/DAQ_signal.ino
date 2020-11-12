@@ -14,8 +14,9 @@ ros::NodeHandle nh;
 
 void messageResponse(const std_msgs::Float64MultiArray& step_msg)
 {
+  delay(800);
   digitalWrite(13, HIGH);
-  delay(2000);
+  delay(10);
   digitalWrite(13, LOW);
 }
 
