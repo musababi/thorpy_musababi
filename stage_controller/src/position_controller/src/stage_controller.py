@@ -4,6 +4,7 @@ import rospy
 from std_msgs.msg import Float64MultiArray, String
 
 def callback(data):
+    global s0_pos, s1_pos
     # Structure of data: [theta, w, pos0, vel0, pos1, vel1] in rad, rad/s, mm, mm/s
     s0_pos = 10000000.*data.data[2]/24.44 + initial_offset0
     s0_vel = 5000.*data.data[3]
@@ -26,9 +27,10 @@ if __name__ == '__main__':
     print(stages)
     
     # define stages and ports as global
-    global s0, s1, p0, p1, initial_offset, stepper_pos_vel
+    global s0, s1, p0, p1, s0_pos, s1_pos, stepper_pos_vel
 
     stepper_pos_vel = Float64MultiArray()
+    stepper_pos_vel.data = [0,0]
     # check serial number to assign axes to stages.
     if stages[1]._port.serial_number == 45875796:
         s0 = stages[0]
@@ -48,21 +50,36 @@ if __name__ == '__main__':
     s0.print_state()
     s1.print_state()
 
-    s0.home()
     s1.home()
+    s0.home()
 
-    initial_offset0 = 35000000
-    initial_offset1 = 120000000
+    initial_offset0 = int(10000000.*118.5/24.44)
+    initial_offset1 = int(10000000.*300/24.44)
     p0.send_message(MGMSG_MOT_MOVE_ABSOLUTE_long(s0._chan_ident, initial_offset0))
     p1.send_message(MGMSG_MOT_MOVE_ABSOLUTE_long(s0._chan_ident, initial_offset1))
 
+    s0_pos = initial_offset0
+    s1_pos = initial_offset1
 
     rospy.init_node('listener', anonymous=True)
     global pub, pubStepper
     # pub = rospy.Publisher('stepper_trial', String, queue_size=10)
     pubStepper = rospy.Publisher('stepper_go', Float64MultiArray, queue_size=10)
+    pubCurrentCoords = rospy.Publisher('current_coordinates', Float64MultiArray, queue_size=10)
 
     rospy.Subscriber('coordinates', Float64MultiArray, callback)
 
-    # spin() simply keeps python from exiting until this node is stopped
-    rospy.spin()
+    currentCoords = Float64MultiArray()
+    currentCoords.data = [0, 0, 0]
+
+    dt = 1000 # ms
+    r = rospy.Rate(1000. / dt)
+    while not rospy.is_shutdown():
+        currentCoords.data[0] = stepper_pos_vel.data[0]
+        currentCoords.data[1] = (s0_pos - initial_offset0) * 24.44 / 10000000.
+        currentCoords.data[2] = (s1_pos - initial_offset1) * 24.44 / 10000000.
+        rospy.loginfo("Current coordinates: %s" % currentCoords.data)
+
+        pubCurrentCoords.publish(currentCoords)
+
+        r.sleep()

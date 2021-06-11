@@ -3,8 +3,16 @@ import rospy
 from std_msgs.msg import Float64MultiArray, String
 from sensor_msgs.msg import Joy
 
+def getInitialCoordinates(data):
+    global coords, publish
+    coords.data[0] = data.data[0]
+    coords.data[2] = data.data[1]
+    coords.data[4] = data.data[2]
+    publish = True
+    # subCurrentCoords.unregister()
+
 def callback(data):
-    global w, v_x, v_y
+    global w, v_x, v_y, coords
     v_x = (1 + 10 * data.buttons[5] + 2 * data.buttons[4]) * data.axes[3]
     v_y = (1 + 10 * data.buttons[5] + 2 * data.buttons[4]) * data.axes[4]
     w = (0.2 + 4 * data.buttons[5] + 0.8 * data.buttons[4]) * data.axes[0]
@@ -12,15 +20,13 @@ def callback(data):
     coords.data[1] = abs(w)
     coords.data[3] = abs(v_x)
     coords.data[5] = abs(v_y)
-    publish = True
 
     rospy.loginfo("I updated. %s"%coords.data)
 
 
 if __name__ == '__main__':
-    global pubCoords, coords, dt, publish
-    dt = 200 # ms
-    publish = True
+    global pubCoords, coords, dt, publish, subCurrentCoords
+    publish = False
 
     rospy.init_node('joy_controller', anonymous=True)
     pubCoords = rospy.Publisher('coordinates', Float64MultiArray, queue_size=10)
@@ -35,19 +41,17 @@ if __name__ == '__main__':
 
 
     rospy.Subscriber('joy', Joy, callback)
+    subCurrentCoords = rospy.Subscriber('current_coordinates', Float64MultiArray, getInitialCoordinates)
 
-    r = rospy.Rate(1000./dt) # 10hz 
+    dt = 100 # ms
+    r = rospy.Rate(1000./dt)
     while not rospy.is_shutdown():
         coords.data[0] = coords.data[0] + w * dt/1000.
         coords.data[2] = coords.data[2] + v_x * dt/1000.
         coords.data[4] = coords.data[4] + v_y * dt/1000.
-        rospy.loginfo("I published. %s"%coords.data)
 
         if publish:
+            rospy.loginfo("I published. %s"%coords.data)
             pubCoords.publish(coords)
-            # publish = False
         
         r.sleep()
-
-    # spin() simply keeps python from exiting until this node is stopped
-    # rospy.spin()
