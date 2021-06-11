@@ -72,7 +72,7 @@ if __name__ == '__main__':
     currentCoords = Float64MultiArray()
     currentCoords.data = [0, 0, 0]
 
-    dt = 1000 # ms
+    dt = 100 # ms
     r = rospy.Rate(1000. / dt)
     while not rospy.is_shutdown():
         currentCoords.data[0] = stepper_pos_vel.data[0]
