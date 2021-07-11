@@ -2,6 +2,7 @@
 import rospy
 from std_msgs.msg import Float64MultiArray, String, Bool
 from pygcode import Line, gcodes
+import numpy as np
 
 def callback(data):
     global in_motion
@@ -20,11 +21,15 @@ if __name__ == '__main__':
 
     fh = open('/home/mugurlu/Downloads/test.gcode', 'r')
     lines = fh.readlines()
-    currentCoords = Float64MultiArray()
-    currentCoords.data = [0,0]
 
-    dt = 250 # ms
+    currentCoords = Float64MultiArray()
+    currentCoords.data = np.zeros(6)
+
+    dt = 500 # ms
     r = rospy.Rate(1000. / dt)
+    x0 = 0
+    y0 = 0
+    z0 = 0
     i = 0
     while not rospy.is_shutdown():
 
@@ -41,16 +46,31 @@ if __name__ == '__main__':
                 print(g.get_param_dict())
                 if type(g) == gcodes.GCodeFeedRate:
                     f = str(g)
-                    currentCoords.data[1] = int(f[1:len(f)])/60.0
+                    v = int(f[1:len(f)])/60.0
                 elif type(g) == gcodes.GCodeLinearMove or type(g) == gcodes.GCodeRapidMove:
                     coord_dict = g.get_param_dict()
-                    currentCoords.data[0] = coord_dict['X']
+                    x1 = coord_dict['X']
+                    y1 = coord_dict['Y']
+                    z1 = coord_dict['Z']
+                    dx = x1 - x0
+                    dy = y1 - y0
+                    dz = z1 - z0
+                    ds = np.linalg.norm([dx, dy, dz])
+                    currentCoords.data[0] = x1
+                    currentCoords.data[1] = dx * v / ds
+                    currentCoords.data[2] = y1
+                    currentCoords.data[3] = dy * v / ds
+                    currentCoords.data[4] = z1
+                    currentCoords.data[5] = dz * v / ds
+
+                    x0 = x1
+                    y0 = y1
+                    z0 = z1
+
                 elif type(g) == gcodes.GCodeGotoPredefinedPosition:
-                    currentCoords.data = [0, 10]
+                    currentCoords.data = [0, 10, 0, 10, 0, 10]
 
-            # currentCoords.data = [10 * (i%2), 5]
             pubCoords.publish(currentCoords)
-
             if i < len(lines)-1:
                 i = i + 1
             else:

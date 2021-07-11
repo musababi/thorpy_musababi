@@ -5,7 +5,7 @@ from std_msgs.msg import Float64MultiArray, String, Bool
 
 def callback(data):
     global s0_pos, initial_offset
-    # Structure of data: [pos0, vel0, pos1, vel1, pos2, vel2] in mm, mm/s
+    # Structure of data: [pos0, vel0] in mm, mm/s
     s0_pos = 10000000.*data.data[0]/24.44 + initial_offset
     s0_vel = 5000.*data.data[1]
     if s0_vel != s0.max_velocity:
