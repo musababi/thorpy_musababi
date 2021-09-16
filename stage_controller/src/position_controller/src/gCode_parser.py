@@ -56,12 +56,15 @@ if __name__ == '__main__':
                     dy = y1 - y0
                     dz = z1 - z0
                     ds = np.linalg.norm([dx, dy, dz])
-                    currentCoords.data[0] = x1
-                    currentCoords.data[1] = dx * v / ds
-                    currentCoords.data[2] = y1
-                    currentCoords.data[3] = dy * v / ds
-                    currentCoords.data[4] = z1
-                    currentCoords.data[5] = dz * v / ds
+                    if ds == 0:
+                        currentCoords.data = [0, 0, 0, 0, 0, 0]
+                    else:
+                        currentCoords.data[0] = x1
+                        currentCoords.data[1] = abs(dx * v / ds)
+                        currentCoords.data[2] = y1
+                        currentCoords.data[3] = abs(dy * v / ds)
+                        currentCoords.data[4] = z1
+                        currentCoords.data[5] = abs(dz * v / ds)
 
                     x0 = x1
                     y0 = y1

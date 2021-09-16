@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 from thorpy.comm.discovery import discover_stages
 import rospy
-from std_msgs.msg import Float64MultiArray, String, Bool
+from std_msgs.msg import Float64MultiArray, Int64MultiArray, String, Bool
 
 def callback(data):
     global s0_pos, s1_pos, s2_pos
@@ -66,9 +66,9 @@ if __name__ == '__main__':
     p1 = s1._port # serial port of stage 1
     p2 = s2._port # serial port of stage 2
 
-    s0._set_homeparams(10000, 0, s0.home_limit_switch, s0.home_offset_distance)
-    s1._set_homeparams(10000, 0, s1.home_limit_switch, s1.home_offset_distance)
-    s2._set_homeparams(10000, 0, s2.home_limit_switch, s2.home_offset_distance)
+    s0._set_homeparams(20000, 0, s0.home_limit_switch, s0.home_offset_distance)
+    s1._set_homeparams(20000, 0, s1.home_limit_switch, s1.home_offset_distance)
+    s2._set_homeparams(20000, 0, s2.home_limit_switch, s2.home_offset_distance)
     s0._set_velparams(0, 25000, 500000)
     s1._set_velparams(0, 25000, 500000)
     s2._set_velparams(0, 25000, 500000)
@@ -92,7 +92,7 @@ if __name__ == '__main__':
 
     rospy.init_node('listener', anonymous=True)
 
-    # pubCurrentCoords = rospy.Publisher('current_coordinates', Float64MultiArray, queue_size=10)
+    pubCurrentCoords = rospy.Publisher('current_coordinates', Float64MultiArray, queue_size=10)
     pubMotorStatus = rospy.Publisher('motor_in_motion', Bool, queue_size=10)
 
     rospy.Subscriber('coordinates', Float64MultiArray, callback)
@@ -105,14 +105,14 @@ if __name__ == '__main__':
     dt = 20 # ms
     r = rospy.Rate(1000. / dt)
     while not rospy.is_shutdown():
-        # currentCoords.data[0] = (s0_pos - initial_offset[0]) * 24.44 / 10000000.
-        # currentCoords.data[1] = (s1_pos - initial_offset[1]) * 24.44 / 10000000.
-        # currentCoords.data[2] = (s2_pos - initial_offset[2]) * 24.44 / 10000000.
+        currentCoords.data[0] = s0.position / 2045.827 - initial_offset[0] * 24.44 / 10000000.
+        currentCoords.data[1] = s1.position / 2045.827 - initial_offset[1] * 24.44 / 10000000.
+        currentCoords.data[2] = s2.position / 2045.827 - initial_offset[2] * 24.44 / 10000000.
         # rospy.loginfo("Current coordinates: %s" % currentCoords.data)
 
         # s0.print_state()
         in_motion.data = s0.status_in_motion_forward or s0.status_in_motion_reverse or s1.status_in_motion_forward or s1.status_in_motion_reverse or s2.status_in_motion_forward or s2.status_in_motion_reverse
-        # pubCurrentCoords.publish(currentCoords)
+        pubCurrentCoords.publish(currentCoords)
         pubMotorStatus.publish(in_motion)
 
         r.sleep()
