@@ -2,9 +2,10 @@
 from thorpy.comm.discovery import discover_stages
 import rospy
 from std_msgs.msg import Float64MultiArray, Int64MultiArray, String, Bool
+import numpy as np
 
 def callback(data):
-    global s0_pos, s1_pos, s2_pos
+    global s0, s1, s2, p0, p1, p2, s0_pos, s1_pos, s2_pos, request_sent, i_need_new_position, set_positions
     # Structure of data: [pos0, vel0, pos1, vel1, pos2, vel2] in mm, mm/s
     s0_pos = 10000000.*data.data[0]/24.44 + initial_offset[0]
     s0_vel = 5000.*data.data[1]
@@ -12,6 +13,7 @@ def callback(data):
     s1_vel = 5000.*data.data[3]
     s2_pos = 10000000.*data.data[4]/24.44 + initial_offset[2]
     s2_vel = 5000.*data.data[5]
+    set_positions = [data.data[0], data.data[2], data.data[4]]
     if s0_vel != s0.max_velocity:
         s0._set_velparams(0, s0_vel, s0.acceleration)
     if s1_vel != s1.max_velocity:
@@ -21,8 +23,9 @@ def callback(data):
     p0.send_message(MGMSG_MOT_MOVE_ABSOLUTE_long(s0._chan_ident, int(s0_pos)))
     p1.send_message(MGMSG_MOT_MOVE_ABSOLUTE_long(s1._chan_ident, int(s1_pos)))
     p2.send_message(MGMSG_MOT_MOVE_ABSOLUTE_long(s2._chan_ident, int(s2_pos)))
-    # while s0.status_in_motion_forward or s0.status_in_motion_reverse or s1.status_in_motion_forward or s1.status_in_motion_reverse or s2.status_in_motion_forward or s2.status_in_motion_reverse:
-    #     rospy.loginfo("waiting...")
+
+    # request_sent = True
+    i_need_new_position = True
 
 
 if __name__ == '__main__':
@@ -32,7 +35,7 @@ if __name__ == '__main__':
     print(stages)
     
     # define stages and ports as global
-    global s0, s1, s2, p0, p1, p2, s0_pos, s1_pos, s2_pos
+    global s0, s1, s2, p0, p1, p2, s0_pos, s1_pos, s2_pos, request_sent, i_need_new_position, set_positions
 
     # check serial number to assign axes to stages.
     if stages[0]._port.serial_number == 45167724:
@@ -93,14 +96,17 @@ if __name__ == '__main__':
     rospy.init_node('listener', anonymous=True)
 
     pubCurrentCoords = rospy.Publisher('current_coordinates', Float64MultiArray, queue_size=10)
-    pubMotorStatus = rospy.Publisher('motor_in_motion', Bool, queue_size=10)
+    pubSendNextPosition = rospy.Publisher('send_next_position', Bool, queue_size=10)
 
     rospy.Subscriber('coordinates', Float64MultiArray, callback)
 
     currentCoords = Float64MultiArray()
-    currentCoords.data = [0, 0, 0]
+    currentCoords.data = [0, 0, 0, 0, 0, 0]
+    set_positions = [0, 0, 0]
 
-    in_motion = Bool()
+    msgSendNextPosition = Bool()
+    request_sent = False
+    i_need_new_position = True
 
     dt = 20 # ms
     r = rospy.Rate(1000. / dt)
@@ -108,11 +114,19 @@ if __name__ == '__main__':
         currentCoords.data[0] = s0.position / 2045.827 - initial_offset[0] * 24.44 / 10000000.
         currentCoords.data[1] = s1.position / 2045.827 - initial_offset[1] * 24.44 / 10000000.
         currentCoords.data[2] = s2.position / 2045.827 - initial_offset[2] * 24.44 / 10000000.
+        # currentCoords.data[3:] = set_positions
         # rospy.loginfo("Current coordinates: %s" % currentCoords.data)
 
         # s0.print_state()
-        in_motion.data = s0.status_in_motion_forward or s0.status_in_motion_reverse or s1.status_in_motion_forward or s1.status_in_motion_reverse or s2.status_in_motion_forward or s2.status_in_motion_reverse
+        # in_motion.data = s0.status_in_motion_forward or s0.status_in_motion_reverse or s1.status_in_motion_forward or s1.status_in_motion_reverse or s2.status_in_motion_forward or s2.status_in_motion_reverse
         pubCurrentCoords.publish(currentCoords)
-        pubMotorStatus.publish(in_motion)
+        distance2goal = np.linalg.norm(currentCoords.data[:3] - np.array(set_positions))
+        # print(distance2goal)
+        currentCoords.data[3] = distance2goal
+        msgSendNextPosition.data = distance2goal < 0.25
+        if i_need_new_position and msgSendNextPosition.data:
+            pubSendNextPosition.publish(msgSendNextPosition)
+            request_sent = True
+            i_need_new_position = False
 
         r.sleep()

@@ -5,7 +5,7 @@ from pygcode import Line, gcodes
 import numpy as np
 
 def callback(data):
-    global finished, lines, i, currentCoords, x0, x1, y0, y1, z0, z1
+    global finished, lines, i, currentCoords, x0, x1, y0, y1, z0, z1, v
 
     pubCoords.publish(currentCoords)
     if i < len(lines) - 1:
@@ -53,16 +53,21 @@ def callback(data):
             currentCoords.data = [0, 10, 0, 10, 0, 10]
 
 if __name__ == '__main__':
-    global finished, lines, i, currentCoords, x0, x1, y0, y1, z0, z1
+    global finished, lines, i, currentCoords, x0, x1, y0, y1, z0, z1, v
     finished = False
 
     rospy.init_node('gCode_parser', anonymous=True)
 
     pubCoords = rospy.Publisher('coordinates', Float64MultiArray, queue_size=10)
 
-    rospy.Subscriber('motor_in_motion', Bool, callback)
+    rospy.Subscriber('send_next_position', Bool, callback)
 
-    fh = open('/home/mugurlu/Downloads/test.gcode', 'r')
+    filename = input("Enter username:")
+    try:
+        fh = open(filename, 'r')
+    except:
+        fh = open('/home/mugurlu/Downloads/test.gcode', 'r')
+        print('Running default gcode!')
     lines = fh.readlines()
 
     currentCoords = Float64MultiArray()
@@ -71,6 +76,7 @@ if __name__ == '__main__':
     x0 = 0
     y0 = 0
     z0 = 0
+    v = 1
     i = 0
 
     rospy.loginfo("line number %s" % i)
