@@ -7,21 +7,21 @@ import numpy as np
 import time
 import matplotlib.pyplot as plt
 
-def callback(data):
-    global s0_pos, s1_pos
-    # Structure of data: [theta, w, pos0, vel0, pos1, vel1] in rad, rad/s, mm, mm/s
-    s0_pos = 10000000.*data.data[2]/24.44 + initial_offset0
-    s0_vel = 5000.*data.data[3]
-    s1_pos = 10000000.*data.data[4]/24.44 + initial_offset1
-    s1_vel = 5000.*data.data[5]
-
-    stepper_pos_vel.data = [data.data[0], data.data[1]]
+# def callback(data):
+#     global s0_pos, s1_pos
+#     # Structure of data: [theta, w, pos0, vel0, pos1, vel1] in rad, rad/s, mm, mm/s
+#     s0_pos = 10000000.*data.data[2]/24.44 + initial_offset0
+#     s0_vel = 5000.*data.data[3]
+#     s1_pos = 10000000.*data.data[4]/24.44 + initial_offset1
+#     s1_vel = 5000.*data.data[5]
+#
+#     stepper_pos_vel.data = [data.data[0], data.data[1]]
 
 if __name__ == '__main__':
 
     rospy.init_node('x_ray_position', anonymous=True)
     pubXrayCoords = rospy.Publisher('x_ray_coordinates', Float64MultiArray, queue_size=10)
-    rospy.Subscriber('coordinates', Float64MultiArray, callback)
+    # rospy.Subscriber('coordinates', Float64MultiArray, callback)
     xRayCoords = Float64MultiArray()
     xRayCoords.data = [0, 0]
 
