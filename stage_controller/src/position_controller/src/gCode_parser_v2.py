@@ -62,7 +62,7 @@ if __name__ == '__main__':
 
     rospy.Subscriber('send_next_position', Bool, callback)
 
-    filename = input("Enter username:")
+    filename = input("Enter filename:")
     try:
         fh = open(filename, 'r')
     except:
@@ -72,6 +72,8 @@ if __name__ == '__main__':
 
     currentCoords = Float64MultiArray()
     currentCoords.data = np.zeros(6)
+    firstCoords = Float64MultiArray()
+    firstCoords.data = np.zeros(6)
 
     x0 = 0
     y0 = 0
@@ -117,6 +119,9 @@ if __name__ == '__main__':
 
         elif type(g) == gcodes.GCodeGotoPredefinedPosition:
             currentCoords.data = [0, 10, 0, 10, 0, 10]
+
+
+    pubCoords.publish(firstCoords)
 
     dt = 500 # ms
     r = rospy.Rate(1000. / dt)

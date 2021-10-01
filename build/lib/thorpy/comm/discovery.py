@@ -41,7 +41,7 @@ def discover_stages():
     serial_ports = [(x[0], x[1], dict(y.split('=', 1) for y in x[2].split(' ') if '=' in y)) for x in comports()]
     
     for ser in serial_ports:
-        if ser[1] == 'APT Stepper Motor Controller':
+        if 'APT Stepper Motor Controller' in ser[1]:
             p = Port.create(ser[0], ser[2].get('SER', None))
             for stage in p.get_stages().values():
                 yield stage
