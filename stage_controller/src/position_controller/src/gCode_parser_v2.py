@@ -3,6 +3,8 @@ import rospy
 from std_msgs.msg import Float64MultiArray, String, Bool
 from pygcode import Line, gcodes
 import numpy as np
+from glob import glob
+import re
 
 def callback(data):
     global finished, lines, i, currentCoords, x0, x1, y0, y1, z0, z1, v
@@ -28,9 +30,18 @@ def callback(data):
             v = int(f[1:len(f)]) / 60.0
         elif type(g) == gcodes.GCodeLinearMove or type(g) == gcodes.GCodeRapidMove:
             coord_dict = g.get_param_dict()
-            x1 = coord_dict['X']
-            y1 = coord_dict['Y']
-            z1 = coord_dict['Z']
+            try:
+                x1 = coord_dict['X']
+            except:
+                x1 = x0
+            try:
+                y1 = coord_dict['Y']
+            except:
+                y1 = y0
+            try:
+                z1 = coord_dict['Z']
+            except:
+                z1 = z0
             dx = x1 - x0
             dy = y1 - y0
             dz = z1 - z0
@@ -52,6 +63,11 @@ def callback(data):
         elif type(g) == gcodes.GCodeGotoPredefinedPosition:
             currentCoords.data = [0, 10, 0, 10, 0, 10]
 
+def natural_sort(l, reverse):
+    convert = lambda text: int(text) if text.isdigit() else text.lower()
+    alphanum_key = lambda key: [convert(c) for c in re.split('([0-9]+)', key)]
+    return sorted(l, key=alphanum_key, reverse=reverse)
+
 if __name__ == '__main__':
     global finished, lines, i, currentCoords, x0, x1, y0, y1, z0, z1, v
     finished = False
@@ -62,11 +78,22 @@ if __name__ == '__main__':
 
     rospy.Subscriber('send_next_position', Bool, callback)
 
-    filename = input("Enter filename:")
+
+    path_to_files = "/home/karacakol/Desktop/gcodes"
+    gcodes = glob(path_to_files + "/*.gcode")
+    ordered_gcodes = natural_sort(gcodes, reverse=False)  
+
+    for i in ordered_gcodes:
+        print(i)
+    
+
+    filename = input("Select filename:")
+
+
     try:
-        fh = open(filename, 'r')
+        fh = open(ordered_gcodes[int(filename)], 'r')
     except:
-        fh = open('/home/mugurlu/Downloads/test.gcode', 'r')
+        fh = open('/home/karacakol/Desktop/gcodes/default.gcode', 'r')
         print('Running default gcode!')
     lines = fh.readlines()
 
