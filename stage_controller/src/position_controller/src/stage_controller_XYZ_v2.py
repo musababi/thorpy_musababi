@@ -3,9 +3,9 @@ from thorpy.comm.discovery import discover_stages
 import rospy
 from std_msgs.msg import Float64MultiArray, Int64MultiArray, String, Bool
 import numpy as np
-import os
-from thorpy.comm.port import Port
-from serial.tools.list_ports import comports
+# import os
+# from thorpy.comm.port import Port
+# from serial.tools.list_ports import comports
 
 def callback(data):
     global s0, s1, s2, p0, p1, p2, s0_pos, s1_pos, s2_pos, request_sent, i_need_new_position, set_positions
