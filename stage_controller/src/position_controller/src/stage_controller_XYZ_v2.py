@@ -69,8 +69,8 @@ if __name__ == '__main__':
     p1 = s1._port # serial port of stage 1
     p2 = s2._port # serial port of stage 2
 
-    s0._set_homeparams(50000, 0, s0.home_limit_switch, s0.home_offset_distance)
-    s1._set_homeparams(50000, 0, s1.home_limit_switch, s1.home_offset_distance)
+    s0._set_homeparams(20000, 0, s0.home_limit_switch, s0.home_offset_distance)
+    s1._set_homeparams(20000, 0, s1.home_limit_switch, s1.home_offset_distance)
     s2._set_homeparams(5000, 0, s2.home_limit_switch, s2.home_offset_distance)
     
     # Initialize maximum velocity and accelerations
