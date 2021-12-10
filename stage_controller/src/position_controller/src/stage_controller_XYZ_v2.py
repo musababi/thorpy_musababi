@@ -3,6 +3,9 @@ from thorpy.comm.discovery import discover_stages
 import rospy
 from std_msgs.msg import Float64MultiArray, Int64MultiArray, String, Bool
 import numpy as np
+import os
+from thorpy.comm.port import Port
+from serial.tools.list_ports import comports
 
 def callback(data):
     global s0, s1, s2, p0, p1, p2, s0_pos, s1_pos, s2_pos, request_sent, i_need_new_position, set_positions
@@ -31,6 +34,17 @@ def callback(data):
 if __name__ == '__main__':
     from thorpy.message import *
     
+    # serial_ports = [(x[0], x[1], dict(y.split('=', 1) for y in x[2].split(' ') if '=' in y)) for x in comports()]
+    # stages = []
+
+    # for ser in serial_ports:
+    #     print(ser)
+    #     if 'APT Stepper Motor Controller' in ser[1]:
+    #         p = Port.create(ser[0], ser[2].get('SER', None))
+    #         for stage in p.get_stages().values():
+    #             stages.append(stage)
+
+    # print('Here we are!')
     stages = list(discover_stages())
     print(stages)
     
@@ -77,7 +91,7 @@ if __name__ == '__main__':
     #                    vel    acc
     s0._set_velparams(0, 25000, 500000)
     s1._set_velparams(0, 25000, 500000)
-    s2._set_velparams(0, 10000, 50000)
+    s2._set_velparams(0, 10000, 2000)
 
     s0.print_state()
     s1.print_state()
@@ -88,7 +102,7 @@ if __name__ == '__main__':
     s2.home()
 
     # Initial offset of stages:     -X-                      -Y-                     -Z-
-    initial_offset = [int(10000000.*150/24.44), int(10000000.*75/24.44), int(10000000.*65/24.44)]
+    initial_offset = [int(10000000.*150/24.44), int(10000000.*25/24.44), int(10000000.*65/24.44)]
     p0.send_message(MGMSG_MOT_MOVE_ABSOLUTE_long(s0._chan_ident, initial_offset[0]))
     p1.send_message(MGMSG_MOT_MOVE_ABSOLUTE_long(s1._chan_ident, initial_offset[1]))
     p2.send_message(MGMSG_MOT_MOVE_ABSOLUTE_long(s2._chan_ident, initial_offset[2]))
@@ -131,6 +145,7 @@ if __name__ == '__main__':
         msgSendNextPosition.data = distance2goal < 0.5 # 0.5 mm
         if i_need_new_position and msgSendNextPosition.data:
             pubSendNextPosition.publish(msgSendNextPosition)
+            rospy.loginfo('send next position!')
             request_sent = True
             i_need_new_position = False
 
