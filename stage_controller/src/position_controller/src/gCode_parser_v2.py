@@ -80,18 +80,19 @@ if __name__ == '__main__':
 
 
     path_to_files = "/home/karacakol/Desktop/gcodes"
-    gcodes = glob(path_to_files + "/*.gcode")
-    ordered_gcodes = natural_sort(gcodes, reverse=False)  
+    gcode_files = glob(path_to_files + "/*.gcode")
+    ordered_gcodes = natural_sort(gcode_files, reverse=False)  
 
     for i in ordered_gcodes:
         print(i)
     
 
-    filename = input("Select filename:")
+    filename = input("Select file by index:")
 
 
     try:
-        fh = open(ordered_gcodes[int(filename)], 'r')
+        fh = open(ordered_gcodes[int(filename) - 1], 'r')
+        print('Running '+ordered_gcodes[int(filename)-1])
     except:
         fh = open('/home/karacakol/Desktop/gcodes/default.gcode', 'r')
         print('Running default gcode!')
