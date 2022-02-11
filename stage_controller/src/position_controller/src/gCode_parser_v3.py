@@ -6,11 +6,11 @@ import numpy as np
 from glob import glob
 import re
 
-# def callback(data):
-#     global finished, allCoords
+def callback(data):
+    global finished, allCoords
 
-#     pubCoords.publish(allCoords)
-#     finished = True
+    pubCoords.publish(allCoords)
+    finished = True
 
     
 
@@ -52,7 +52,8 @@ if __name__ == '__main__':
     number_of_lines = len(lines)
 
     allCoords = Float64MultiArray()
-    allCoords.data = np.zeros((6, number_of_lines))
+    allCoords.data = np.zeros(6)
+    coords = np.zeros(6)
 
     x0 = 0
     y0 = 0
@@ -94,7 +95,7 @@ if __name__ == '__main__':
                 dz = z1 - z0
                 ds = np.linalg.norm([dx, dy, dz])
                 if ds == 0:
-                    coords = [0, 0, 0, 0, 0, 0]
+                    coords = np.array([x1, 0, y1, 0, z1, 0])
                 else:
                     coords[0] = x1
                     coords[1] = abs(dx * v / ds)
@@ -108,18 +109,19 @@ if __name__ == '__main__':
                 z0 = z1
 
             elif type(g) == gcodes.GCodeGotoPredefinedPosition:
-                coords = [0, 10, 0, 10, 0, 10]
+                coords = np.array([0, 10, 0, 10, 0, 10])
 
-        allCoords.data[:,i] = coords
+        allCoords.data = np.concatenate((allCoords.data, coords), axis=0)
 
+    print(allCoords.data)
+    
 
+    # pubCoords.publish(allCoords)
 
-    pubCoords.publish(allCoords)
+    dt = 500 # ms
+    r = rospy.Rate(1000. / dt)
+    while not rospy.is_shutdown():
+        if finished:
+            break
 
-    # dt = 500 # ms
-    # r = rospy.Rate(1000. / dt)
-    # while not rospy.is_shutdown():
-    #     if finished:
-    #         break
-
-    #     r.sleep()
+        r.sleep()
