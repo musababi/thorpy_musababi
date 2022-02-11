@@ -8,27 +8,11 @@ import numpy as np
 # from serial.tools.list_ports import comports
 
 def callback(data):
-    global s0, s1, s2, p0, p1, p2, s0_pos, s1_pos, s2_pos, request_sent, i_need_new_position, set_positions
-    # Structure of data: [pos0, vel0, pos1, vel1, pos2, vel2] in mm, mm/s
-    s0_pos = -10000000.*data.data[0]/24.44 + initial_offset[0]
-    s0_vel = 5000.*data.data[1]
-    s1_pos = 10000000.*data.data[2]/24.44 + initial_offset[1]
-    s1_vel = 5000.*data.data[3]
-    s2_pos = -10000000.*data.data[4]/24.44 + initial_offset[2]
-    s2_vel = 5000.*data.data[5]
-    set_positions = [data.data[0], data.data[2], data.data[4]]
-    if s0_vel != s0.max_velocity:
-        s0._set_velparams(0, s0_vel, s0.acceleration)
-    if s1_vel != s1.max_velocity:
-        s1._set_velparams(0, s1_vel, s1.acceleration)
-    if s2_vel != s2.max_velocity:
-        s2._set_velparams(0, s2_vel, s2.acceleration)
-    p0.send_message(MGMSG_MOT_MOVE_ABSOLUTE_long(s0._chan_ident, int(s0_pos)))
-    p1.send_message(MGMSG_MOT_MOVE_ABSOLUTE_long(s1._chan_ident, int(s1_pos)))
-    p2.send_message(MGMSG_MOT_MOVE_ABSOLUTE_long(s2._chan_ident, int(s2_pos)))
+    global coords_data, i_got_gCode
 
-    # request_sent = True
-    i_need_new_position = True
+    coords_data = np.array(data.data)
+    print(coords_data)
+    i_got_gCode = True
 
 
 if __name__ == '__main__':
@@ -49,7 +33,7 @@ if __name__ == '__main__':
     print(stages)
     
     # define stages and ports as global
-    global s0, s1, s2, p0, p1, p2, s0_pos, s1_pos, s2_pos, request_sent, i_need_new_position, set_positions
+    global coords_data, i_got_gCode
 
     # check serial number to assign axes to stages.
     if stages[0]._port.serial_number == 45875785:
@@ -85,13 +69,13 @@ if __name__ == '__main__':
 
     s0._set_homeparams(20000, 0, s0.home_limit_switch, s0.home_offset_distance)
     s1._set_homeparams(20000, 0, s1.home_limit_switch, s1.home_offset_distance)
-    s2._set_homeparams(5000, 0, s2.home_limit_switch, s2.home_offset_distance)
+    s2._set_homeparams(10000, 0, s2.home_limit_switch, s2.home_offset_distance)
     
     # Initialize maximum velocity and accelerations
     #                    vel    acc
     s0._set_velparams(0, 25000, 500000)
     s1._set_velparams(0, 25000, 500000)
-    s2._set_velparams(0, 10000, 2000)
+    s2._set_velparams(0, 25000, 50000)
 
     s0.print_state()
     s1.print_state()
@@ -116,37 +100,54 @@ if __name__ == '__main__':
     pubCurrentCoords = rospy.Publisher('current_coordinates', Float64MultiArray, queue_size=10)
     pubSendNextPosition = rospy.Publisher('send_next_position', Bool, queue_size=10)
 
-    rospy.Subscriber('coordinates', Float64MultiArray, callback)
+    rospy.Subscriber('all_coordinates', Float64MultiArray, callback)
 
-    currentCoords = Float64MultiArray()
-    currentCoords.data = [0, 0, 0, 0, 0, 0]
+    currentCoords = [0, 0, 0]
     set_positions = [0, 0, 0]
 
     msgSendNextPosition = Bool()
     request_sent = False
-    i_need_new_position = True
+    i_got_gCode = False
+    i = 0
 
     dt = 20 # ms
     r = rospy.Rate(1000. / dt)
     while not rospy.is_shutdown():
-        currentCoords.data[0] = -s0.position / 2045.827 + initial_offset[0] * 24.44 / 10000000.
-        currentCoords.data[1] = s1.position / 2045.827 - initial_offset[1] * 24.44 / 10000000.
-        currentCoords.data[2] = -s2.position / 2045.827 + initial_offset[2] * 24.44 / 10000000.
-        # currentCoords.data[3:] = set_positions
-        # rospy.loginfo("Current coordinates: %s" % currentCoords.data)
-
-        # s0.print_state()
-        # in_motion.data = s0.status_in_motion_forward or s0.status_in_motion_reverse or s1.status_in_motion_forward or s1.status_in_motion_reverse or s2.status_in_motion_forward or s2.status_in_motion_reverse
-        pubCurrentCoords.publish(currentCoords)
-        distance2goal = np.linalg.norm(currentCoords.data[:3] - np.array(set_positions))
-        # print(distance2goal)
-        currentCoords.data[3] = distance2goal
+        currentCoords[0] = -s0.position / 2045.827 + initial_offset[0] * 24.44 / 10000000.
+        currentCoords[1] = s1.position / 2045.827 - initial_offset[1] * 24.44 / 10000000.
+        currentCoords[2] = -s2.position / 2045.827 + initial_offset[2] * 24.44 / 10000000.
+        
+        # pubCurrentCoords.publish(currentCoords)
+        distance2goal = np.linalg.norm(np.array(currentCoords) - np.array(set_positions))
+        print('%.4f, [%.4f %.4f %.4f], [%.4f %.4f %.4f]' % (distance2goal, currentCoords[0], currentCoords[1], currentCoords[2], set_positions[0], set_positions[1], set_positions[2]))
         # Treshold for next position command
-        msgSendNextPosition.data = distance2goal < 0.5 # 0.5 mm
-        if i_need_new_position and msgSendNextPosition.data:
-            pubSendNextPosition.publish(msgSendNextPosition)
-            rospy.loginfo('send next position!')
-            request_sent = True
-            i_need_new_position = False
+        msgSendNextPosition.data = distance2goal < 1 # mm
+        if i_got_gCode and msgSendNextPosition.data:
+            # Structure of data: [pos0, vel0, pos1, vel1, pos2, vel2] in mm, mm/s
+            next_coords = coords_data[6*i:6*i+6]
+            print(next_coords)
+            s0_pos = -10000000.*next_coords[0]/24.44 + initial_offset[0]
+            s0_vel = 5000.*next_coords[1]
+            s1_pos = 10000000.*next_coords[2]/24.44 + initial_offset[1]
+            s1_vel = 5000.*next_coords[3]
+            s2_pos = -10000000.*next_coords[4]/24.44 + initial_offset[2]
+            s2_vel = 5000.*next_coords[5]
+            set_positions = [next_coords[0], next_coords[2], next_coords[4]]
+            if s0_vel != s0.max_velocity:
+                s0._set_velparams(0, s0_vel, s0.acceleration)
+            if s1_vel != s1.max_velocity:
+                s1._set_velparams(0, s1_vel, s1.acceleration)
+            if s2_vel != s2.max_velocity:
+                s2._set_velparams(0, s2_vel, s2.acceleration)
+            p0.send_message(MGMSG_MOT_MOVE_ABSOLUTE_long(s0._chan_ident, int(s0_pos)))
+            p1.send_message(MGMSG_MOT_MOVE_ABSOLUTE_long(s1._chan_ident, int(s1_pos)))
+            p2.send_message(MGMSG_MOT_MOVE_ABSOLUTE_long(s2._chan_ident, int(s2_pos)))
+
+            if len(coords_data)/6 > i + 1:
+                i = i + 1
+            else:
+                i_got_gCode = False
+                i = 0
+
 
         r.sleep()
