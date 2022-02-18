@@ -13,7 +13,6 @@ def callback(data):
     finished = True
 
     
-
 def natural_sort(l, reverse):
     convert = lambda text: int(text) if text.isdigit() else text.lower()
     alphanum_key = lambda key: [convert(c) for c in re.split('([0-9]+)', key)]
@@ -52,13 +51,13 @@ if __name__ == '__main__':
     number_of_lines = len(lines)
 
     allCoords = Float64MultiArray()
-    allCoords.data = np.zeros(6)
-    coords = np.zeros(6)
+    # allCoords.data = np.zeros(6, dtype=float)
+    coords = np.zeros(6, dtype=float)
 
-    x0 = 0
-    y0 = 0
-    z0 = 0
-    v = 1
+    x0 = 0.0
+    y0 = 0.0
+    z0 = 0.0
+    v = 1.0
 
     for i in range(number_of_lines):
 
@@ -80,14 +79,17 @@ if __name__ == '__main__':
                 coord_dict = g.get_param_dict()
                 try:
                     x1 = coord_dict['X']
+                    print('x: %.3f' %x1)
                 except:
                     x1 = x0
                 try:
                     y1 = coord_dict['Y']
+                    print('y: %.3f' %y1)
                 except:
                     y1 = y0
                 try:
                     z1 = coord_dict['Z']
+                    print('z: %.3f' %z1)
                 except:
                     z1 = z0
                 dx = x1 - x0
@@ -95,7 +97,7 @@ if __name__ == '__main__':
                 dz = z1 - z0
                 ds = np.linalg.norm([dx, dy, dz])
                 if ds == 0:
-                    coords = np.array([x1, 0, y1, 0, z1, 0])
+                    coords = np.array([x1, 0.0, y1, 0.0, z1, 0.0])
                 else:
                     coords[0] = x1
                     coords[1] = abs(dx * v / ds)
@@ -103,14 +105,15 @@ if __name__ == '__main__':
                     coords[3] = abs(dy * v / ds)
                     coords[4] = z1
                     coords[5] = abs(dz * v / ds)
+                    print('==== %.3f %.3f %.3f ==== %.3f %.3f %.3f ====' % (coords[0], coords[2], coords[4], x1, y1, z1))
 
                 x0 = x1
                 y0 = y1
                 z0 = z1
 
             elif type(g) == gcodes.GCodeGotoPredefinedPosition:
-                coords = np.array([0, 10, 0, 10, 0, 10])
-
+                coords = np.array([0.0, 10.0, 0.0, 10.0, 0.0, 10.0], dtype=float)
+        # print('[%.3f %.3f %.3f]' % (coords[0], coords[2], coords[4]))
         allCoords.data = np.concatenate((allCoords.data, coords), axis=0)
 
     print(allCoords.data)

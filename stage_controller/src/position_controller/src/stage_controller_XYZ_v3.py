@@ -11,7 +11,8 @@ def callback(data):
     global coords_data, i_got_gCode
 
     coords_data = np.array(data.data)
-    print(coords_data)
+    for i in coords_data:
+        print('%.3f' % i)
     i_got_gCode = True
 
 
@@ -73,8 +74,8 @@ if __name__ == '__main__':
     
     # Initialize maximum velocity and accelerations
     #                    vel    acc
-    s0._set_velparams(0, 25000, 500000)
-    s1._set_velparams(0, 25000, 500000)
+    s0._set_velparams(0, 25000, 1000000)
+    s1._set_velparams(0, 25000, 1000000)
     s2._set_velparams(0, 25000, 50000)
 
     s0.print_state()
@@ -110,7 +111,7 @@ if __name__ == '__main__':
     i_got_gCode = False
     i = 0
 
-    dt = 20 # ms
+    dt = 10 # ms
     r = rospy.Rate(1000. / dt)
     while not rospy.is_shutdown():
         currentCoords[0] = -s0.position / 2045.827 + initial_offset[0] * 24.44 / 10000000.
@@ -119,13 +120,13 @@ if __name__ == '__main__':
         
         # pubCurrentCoords.publish(currentCoords)
         distance2goal = np.linalg.norm(np.array(currentCoords) - np.array(set_positions))
-        print('%.4f, [%.4f %.4f %.4f], [%.4f %.4f %.4f]' % (distance2goal, currentCoords[0], currentCoords[1], currentCoords[2], set_positions[0], set_positions[1], set_positions[2]))
+        # print('%.4f, [%.4f %.4f %.4f], [%.4f %.4f %.4f]' % (distance2goal, currentCoords[0], currentCoords[1], currentCoords[2], set_positions[0], set_positions[1], set_positions[2]))
         # Treshold for next position command
         msgSendNextPosition.data = distance2goal < 1 # mm
         if i_got_gCode and msgSendNextPosition.data:
             # Structure of data: [pos0, vel0, pos1, vel1, pos2, vel2] in mm, mm/s
             next_coords = coords_data[6*i:6*i+6]
-            print(next_coords)
+            print('%d, [%.3f %.3f %.3f]' %(i+1, next_coords[0], next_coords[2], next_coords[4]))
             s0_pos = -10000000.*next_coords[0]/24.44 + initial_offset[0]
             s0_vel = 5000.*next_coords[1]
             s1_pos = 10000000.*next_coords[2]/24.44 + initial_offset[1]
