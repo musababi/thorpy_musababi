@@ -61,7 +61,7 @@ if __name__ == '__main__':
     s0_pos = initial_offset0
     s1_pos = initial_offset1
 
-    rospy.init_node('stage_controller', anonymous=True)
+    rospy.init_node('listener', anonymous=True)
     global pub, pubStepper
     # pub = rospy.Publisher('stepper_trial', String, queue_size=10)
     pubStepper = rospy.Publisher('stepper_go', Float64MultiArray, queue_size=10)
