@@ -1,0 +1,2 @@
+position_controller
+-DCATKIN_DEVEL_PREFIX=/home/gulec/catkin_ws/src/thorpy_musababi/stage_controller/devel -DCMAKE_INSTALL_PREFIX=/home/gulec/catkin_ws/src/thorpy_musababi/stage_controller/install -G Unix Makefiles

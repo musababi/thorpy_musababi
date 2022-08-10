@@ -1,0 +1,2 @@
+- setup-file:
+    local-name: /home/gulec/catkin_ws/src/thorpy_musababi/stage_controller/install/setup.sh

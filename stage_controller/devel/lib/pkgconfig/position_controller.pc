@@ -1,0 +1,8 @@
+prefix=/home/gulec/catkin_ws/src/thorpy_musababi/stage_controller/devel
+
+Name: position_controller
+Description: Description of position_controller
+Version: 0.0.0
+Cflags: 
+Libs: -L${prefix}/lib 
+Requires: 

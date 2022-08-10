@@ -1,7 +1,22 @@
 #!/usr/bin/env python3
-from thorpy.comm.discovery import discover_stages
+# from thorpy.comm.discovery import discover_stages
 import rospy
 from std_msgs.msg import Float64MultiArray, String
+
+def discover_stages():
+    # import usb
+    import os
+    from thorpy.comm.port import Port
+    from serial.tools.list_ports import comports
+    import platform
+    
+    serial_ports = [(x[0], x[1], dict(y.split('=', 1) for y in x[2].split(' ') if '=' in y)) for x in comports()]
+    
+    for ser in serial_ports:
+        if 'APT Stepper Motor Controller' in ser[1]:
+            p = Port.create(ser[0], ser[2].get('SER', None))
+            for stage in p.get_stages().values():
+                yield stage
 
 def callback(data):
     global s0_pos, s1_pos
