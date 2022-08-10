@@ -23,7 +23,7 @@ if __name__ == '__main__':
     global s0, p0, s0_pos, initial_offset
 
     # check serial number to assign axes to stages.
-    if stages[0]._port.serial_number == 45167724:
+    if stages[0]._port.serial_number == 45169034:
         s0 = stages[0]
     p0 = s0._port # serial port of stage 0
 
