@@ -50,8 +50,10 @@ def callback_new(data):
     p1.send_message(MGMSG_MOT_MOVE_ABSOLUTE_long(s0._chan_ident, int(s1_pos)))
     p2.send_message(MGMSG_MOT_MOVE_ABSOLUTE_long(s0._chan_ident, int(s2_pos)))
 
-    stepper_pos_vel.data = [data.data[6], data.data[7]]
+    stepper_pos_vel.data = [data.data[6], data.data[7], data.data[8], data.data[9]]
     pubStepper.publish(stepper_pos_vel)
+
+    # rospy.loginfo("Received coordinates: %s" % data.data)
 
 if __name__ == '__main__':
     from thorpy.message import *
@@ -70,10 +72,10 @@ if __name__ == '__main__':
     stages = list(discover_stages())
     print(stages)
     
-    global stepper_pos_vel
+    global stepper_pos_vel, s0_pos, s1_pos, s2_pos
 
     stepper_pos_vel = Float64MultiArray()
-    stepper_pos_vel.data = [0,0]
+    stepper_pos_vel.data = [0,0,0,0]
 
     # define stages and ports as global
     # global coords_data, i_got_gCode
@@ -151,7 +153,7 @@ if __name__ == '__main__':
     rospy.Subscriber('coordinates_new', Float64MultiArray, callback_new)
 
     currentCoords = Float64MultiArray()
-    currentCoords.data = [0, 0, 0, 0]
+    currentCoords.data = [0, 0, 0, 0, 0]
 
     # currentCoords = [0, 0, 0]
     set_positions = [0, 0, 0]
@@ -161,13 +163,14 @@ if __name__ == '__main__':
     i_got_gCode = False
     i = 0
 
-    dt = 10 # ms
+    dt = 100 # ms
     r = rospy.Rate(1000. / dt)
     while not rospy.is_shutdown():
         currentCoords.data[0] = (s0_pos - initial_offset[0]) * 24.44 / 10000000.
         currentCoords.data[1] = (s1_pos - initial_offset[1]) * 24.44 / 10000000.
         currentCoords.data[2] = (s2_pos - initial_offset[2]) * 24.44 / 10000000.
         currentCoords.data[3] = stepper_pos_vel.data[0]
+        currentCoords.data[4] = stepper_pos_vel.data[2]
 
         rospy.loginfo("Current coordinates: %s" % currentCoords.data)
         # rospy.loginfo("s0 pos: %s" % s0_pos)
