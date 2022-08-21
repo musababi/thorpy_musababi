@@ -7,9 +7,9 @@
 #define STEP1_PIN 8//2
 #define DIR1_PIN 9//3
 #define EN1_PIN 10//6
-#define EN2_PIN 7
-#define STEP2_PIN 4
-#define DIR2_PIN 5
+#define EN2_PIN 11//7
+#define STEP2_PIN 13//4
+#define DIR2_PIN 12//5
 
 int maxMotorSpeed = 10000;
 
@@ -57,12 +57,12 @@ void setup() {
   // Configure each stepper
   stepperA.setMaxSpeed(maxMotorSpeed);
   stepperA.setEnablePin(EN1_PIN);
-  stepperA.setPinsInverted(true, false, true);
+  stepperA.setPinsInverted(true, false, false);
   stepperA.enableOutputs();
   
   stepperB.setMaxSpeed(maxMotorSpeed);
   stepperB.setEnablePin(EN2_PIN);
-  stepperB.setPinsInverted(true, false, true);
+  stepperB.setPinsInverted(true, false, false);
   stepperB.enableOutputs();
 
   // Then give them to MultiStepper to manage

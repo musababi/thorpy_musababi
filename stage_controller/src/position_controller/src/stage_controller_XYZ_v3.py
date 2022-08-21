@@ -46,6 +46,8 @@ def callback_new(data):
         s1._set_velparams(0, s1_vel, s1.acceleration)
     if s2_vel != s2.max_velocity:
         s2._set_velparams(0, s2_vel, s2.acceleration)
+
+    # s0.position(int(s0_pos))    
     p0.send_message(MGMSG_MOT_MOVE_ABSOLUTE_long(s0._chan_ident, int(s0_pos)))
     p1.send_message(MGMSG_MOT_MOVE_ABSOLUTE_long(s0._chan_ident, int(s1_pos)))
     p2.send_message(MGMSG_MOT_MOVE_ABSOLUTE_long(s0._chan_ident, int(s2_pos)))
