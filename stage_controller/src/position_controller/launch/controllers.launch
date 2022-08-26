@@ -1,0 +1,11 @@
+<launch>
+
+	<node name="joy_node" pkg="joy" type="joy_node"/>
+	
+	<node name="stage_controller_XYZ_v3" pkg="position_controller" type="stage_controller_XYZ_v3.py args="-/dev/ttyACM0"/>
+	
+	<node name="serial_node" pkg="rosserial_arduino" type="serial_node.py"/>
+	
+	<node name="joy_controller" pkg="position_controller" type="joy_controller.py"/>
+	
+</launch>

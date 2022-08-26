@@ -42,6 +42,7 @@ def callback_new(data):
 
     if s0_vel != s0.max_velocity:
         s0._set_velparams(0, s0_vel, s0.acceleration)
+        # s0.max_velocity(s0_vel)
     if s1_vel != s1.max_velocity:
         s1._set_velparams(0, s1_vel, s1.acceleration)
     if s2_vel != s2.max_velocity:
