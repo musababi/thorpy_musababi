@@ -6,6 +6,7 @@ import cv2
 import numpy as np
 import time
 import matplotlib.pyplot as plt
+import threading
 
 # def callback(data):
 #     global s0_pos, s1_pos
@@ -17,6 +18,35 @@ import matplotlib.pyplot as plt
 #
 #     stepper_pos_vel.data = [data.data[0], data.data[1]]
 
+### mark the calibration pixel for the alignment of the glass petri
+def mark_petri_calibration_pixel():
+    pass
+
+# class camThread(threading.Thread):
+#     def __init__(self, previewName, camPath):
+#         threading.Thread.__init__(self)
+#         self.previewName = previewName
+#         self.camPath = camPath
+#     def run(self):
+#         print("Starting " + self.previewName)
+#         camPreview(self.previewName, self.camPath)
+
+# def camPreview(previewName, camPath):
+#     cv2.namedWindow(previewName)
+#     cam = cv2.VideoCapture(camPath)
+#     if cam.isOpened():  # try to get the first frame
+#         rval, frame = cam.read()
+#     else:
+#         rval = False
+
+#     while rval:
+#         cv2.imshow(previewName, frame)
+#         rval, frame = cam.read()
+#         key = cv2.waitKey(20)
+#         if key == 27:  # exit on ESC
+#             break
+#     cv2.destroyWindow(previewName)
+
 if __name__ == '__main__':
 
     rospy.init_node('x_ray_position', anonymous=True)
@@ -25,8 +55,18 @@ if __name__ == '__main__':
     xRayCoords = Float64MultiArray()
     xRayCoords.data = [0, 0]
 
+    # Create two threads as follows
+    # thread1 = camThread("Camera 1", '/dev/video0')
+    # thread2 = camThread("Camera 2", '/dev/video4')
+    # thread1.start()
+    # thread2.start()
+
+    # cam = input('give device path for camera:')
+
+    # cap0 = cv2.VideoCapture(cam)
     cap0 = cv2.VideoCapture('/dev/video4')
-    cap1 = cv2.VideoCapture('/dev/video2')
+    cap1 = cv2.VideoCapture('/dev/video0')
+    # winname0 = cam
     winname0 = 'Screen Capture 0'
     winname1 = 'Screen Capture 1'
     cv2.namedWindow(winname0)        # Create a named window
@@ -35,10 +75,13 @@ if __name__ == '__main__':
     cv2.moveWindow(winname1, 10,30)
 
     i = 0
-    dt = 40 # ms
+    dt = 20 # ms
     r = rospy.Rate(1000. / dt)
 
     # tic = time.clock()
+
+    captured_pics = 0 # number of captured pictures 
+
     while not rospy.is_shutdown():
     # while(True):
 
@@ -46,7 +89,9 @@ if __name__ == '__main__':
         # print(toc - tic)
         # tic = toc
         ret0, image0 = cap0.read()
+        #cap0.release()
         ret1, image1 = cap1.read()
+
         # imgray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
         # # thresh = filters.threshold_otsu(imgray)
@@ -68,12 +113,28 @@ if __name__ == '__main__':
             # print('Centroid\t' + str(props[j].centroid))
             # print('Perimeter\t' + str(props[j].perimeter))
             # print('Area\t\t' + str(props[j].area))
+        
+        try: 
+            cv2.imshow(winname0, cv2.rotate(image0, cv2.ROTATE_90_COUNTERCLOCKWISE))
+        except:
+            rospy.loginfo("temassizlik 0")
 
+        try:
+            cv2.imshow(winname1, cv2.rotate(image1, cv2.ROTATE_90_COUNTERCLOCKWISE))
+        except:
+            rospy.loginfo("temassizlik 1")
 
-        cv2.imshow(winname0, cv2.rotate(image0, cv2.ROTATE_90_COUNTERCLOCKWISE))
-        cv2.imshow(winname1, cv2.rotate(image1, cv2.ROTATE_90_COUNTERCLOCKWISE))
+        cv2.imwrite('/home/gulec/hakan_images_auto_20ms/c'+str(captured_pics)+'_left.png',cv2.rotate(image0, cv2.ROTATE_90_COUNTERCLOCKWISE))
+        cv2.imwrite('/home/gulec/hakan_images_auto_20ms/c'+str(captured_pics)+'_right.png',cv2.rotate(image0, cv2.ROTATE_90_COUNTERCLOCKWISE))
+        captured_pics += 1
 
+        # if cv2.waitKey(1) & 0xFF == ord('y'): #save on pressing 'y'
+        #     rospy.loginfo("bastin") 
+        #     cv2.imwrite('/home/gulec/hakan_images/c'+str(captured_pics)+'_left.png',cv2.rotate(image0, cv2.ROTATE_90_COUNTERCLOCKWISE))
+        #     cv2.imwrite('/home/gulec/hakan_images/c'+str(captured_pics)+'_right.png',cv2.rotate(image0, cv2.ROTATE_90_COUNTERCLOCKWISE))
+        #     captured_pics += 1
         if cv2.waitKey(50) & 0xFF == ord('q'):
+            rospy.loginfo("kapatmaya bastin")
             break
 
         r.sleep()
