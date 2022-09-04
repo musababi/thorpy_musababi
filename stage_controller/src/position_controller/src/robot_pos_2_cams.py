@@ -69,7 +69,7 @@ if __name__ == '__main__':
     cv2.moveWindow(winname1, 10,30)
 
     i = 0
-    dt = 20 # ms
+    dt = 50 # ms
     r = rospy.Rate(1000. / dt)
 
     # tic = time.clock()
@@ -89,28 +89,40 @@ if __name__ == '__main__':
         rotated_image1 = cv2.rotate(image1, cv2.ROTATE_90_COUNTERCLOCKWISE)
 
         ###< crop the petri cover part of the image
-        cropped_image0 = rotated_image0[235:345, 210:350]
-        cropped_image1 = rotated_image1[235:345, 210:350]
+        cropped_image0 = rotated_image0[235:340, 215:345]
+        cropped_image1 = rotated_image1[235:340, 215:345]
 
         ###< denoised cropped images
-        denoised_image0 = cv2.fastNlMeansDenoisingColored(cropped_image0,None,8,8,7,15)
+        denoised_image0 = cv2.fastNlMeansDenoisingColored(cropped_image0,None,10,10,7,15)
         denoised_image1 = cv2.fastNlMeansDenoisingColored(cropped_image1,None,10,10,7,15)
 
         ###< convert color space to gray
         gray_image0 = cv2.cvtColor(denoised_image0, cv2.COLOR_BGR2GRAY)
         gray_image1 = cv2.cvtColor(denoised_image1, cv2.COLOR_BGR2GRAY)
-
-        _, gray_image0 = cv2.threshold(gray_image0, 120, 255, cv2.THRESH_BINARY)
-        _, gray_image1 = cv2.threshold(gray_image1, 105, 255, cv2.THRESH_BINARY)
+        rospy.loginfo('min values')
+        rospy.loginfo(gray_image0.min())
+        rospy.loginfo(gray_image1.min())
+        rospy.loginfo('min coordinates')
+        argmin0 = np.argmin(gray_image0)
+        shape0 = gray_image0.shape
+        argmin1 = np.argmin(gray_image1)
+        shape1 = gray_image1.shape
+        rospy.loginfo((int(argmin0/shape0[1]), int(argmin0%shape0[1])))
+        rospy.loginfo((int(argmin1/shape1[1]), int(argmin1%shape1[1])))
+        # rospy.loginfo(gray_image1.argmin())
+        _, bin_image0 = cv2.threshold(gray_image0, gray_image0.min() + 20, 255, cv2.THRESH_BINARY)
+        _, bin_image1 = cv2.threshold(gray_image1, gray_image1.min() + 20, 255, cv2.THRESH_BINARY)
 
         kernel = np.ones((5,5),np.uint8)
-        gray_image0 = cv2.morphologyEx(gray_image0.astype(np.uint8), cv2.MORPH_OPEN, kernel)
-        gray_image1 = cv2.morphologyEx(gray_image1.astype(np.uint8), cv2.MORPH_OPEN, kernel)
-        gray_image0 = cv2.morphologyEx(gray_image0.astype(np.uint8), cv2.MORPH_CLOSE, kernel)
-        gray_image1 = cv2.morphologyEx(gray_image1.astype(np.uint8), cv2.MORPH_CLOSE, kernel)
+        bin_image0 = cv2.morphologyEx(bin_image0.astype(np.uint8), cv2.MORPH_OPEN, kernel)
+        bin_image1 = cv2.morphologyEx(bin_image1.astype(np.uint8), cv2.MORPH_OPEN, kernel)
+        bin_image0 = cv2.morphologyEx(bin_image0.astype(np.uint8), cv2.MORPH_CLOSE, kernel)
+        bin_image1 = cv2.morphologyEx(bin_image1.astype(np.uint8), cv2.MORPH_CLOSE, kernel)
 
-        contours0, hierarchy = cv2.findContours(gray_image0, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-        contours1, hierarchy = cv2.findContours(gray_image1, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        contours0, hierarchy = cv2.findContours(bin_image0, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        # rospy.loginfo(len(contours0))
+        contours1, hierarchy = cv2.findContours(bin_image1, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        # rospy.loginfo(len(contours1))
 
         cv2.drawContours(cropped_image0, contours0, -1, (150,150,150), 2)
         cv2.drawContours(cropped_image1, contours1, -1, (150,150,150), 2)
