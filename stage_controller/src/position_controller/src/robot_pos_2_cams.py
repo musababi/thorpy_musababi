@@ -55,17 +55,11 @@ if __name__ == '__main__':
     xRayCoords = Float64MultiArray()
     xRayCoords.data = [0, 0]
 
-    # Create two threads as follows
-    # thread1 = camThread("Camera 1", '/dev/video0')
-    # thread2 = camThread("Camera 2", '/dev/video4')
-    # thread1.start()
-    # thread2.start()
-
     # cam = input('give device path for camera:')
 
     # cap0 = cv2.VideoCapture(cam)
     cap0 = cv2.VideoCapture('/dev/video4')
-    cap1 = cv2.VideoCapture('/dev/video0')
+    cap1 = cv2.VideoCapture('/dev/video2')
     # winname0 = cam
     winname0 = 'Screen Capture 0'
     winname1 = 'Screen Capture 1'
@@ -82,59 +76,174 @@ if __name__ == '__main__':
 
     captured_pics = 0 # number of captured pictures 
 
-    while not rospy.is_shutdown():
-    # while(True):
+    backsub = cv2.createBackgroundSubtractorMOG2()
 
-        # toc = time.clock()
-        # print(toc - tic)
-        # tic = toc
+    while not rospy.is_shutdown():
+
+        ###< read the images from both cameras
         ret0, image0 = cap0.read()
-        #cap0.release()
         ret1, image1 = cap1.read()
 
-        # imgray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        ###< rotate the image 90 degrees counterclockwise
+        rotated_image0 = cv2.rotate(image0, cv2.ROTATE_90_COUNTERCLOCKWISE)
+        rotated_image1 = cv2.rotate(image1, cv2.ROTATE_90_COUNTERCLOCKWISE)
 
-        # # thresh = filters.threshold_otsu(imgray)
-        # ret, imbin = cv2.threshold(imgray[440:590,300:700], 25, 255, cv2.THRESH_BINARY)
-        # imbin = cv2.flip(cv2.transpose(imbin), 1)
+        ###< crop the petri cover part of the image
+        cropped_image0 = rotated_image0[235:345, 210:350]
+        cropped_image1 = rotated_image1[235:345, 210:350]
 
-        # kernel = np.ones((10,10),np.uint8)
-        # imbin = cv2.morphologyEx(imbin.astype(np.uint8), cv2.MORPH_OPEN, kernel)
-        # imbin = cv2.morphologyEx(imbin.astype(np.uint8), cv2.MORPH_CLOSE, kernel)
-        # label_img = measure.label(imbin, connectivity=imbin.ndim)
-        # props = measure.regionprops(label_img)
+        ###< denoised cropped images
+        denoised_image0 = cv2.fastNlMeansDenoisingColored(cropped_image0,None,8,8,7,15)
+        denoised_image1 = cv2.fastNlMeansDenoisingColored(cropped_image1,None,10,10,7,15)
 
-        # for j in range(len(props)):
-            # xRayCoords.data = [props[j].centroid[1], props[j].centroid[0]] # [x,y]
-            # pubXrayCoords.publish(xRayCoords)
-            # rospy.loginfo("I published. %s" % xRayCoords.data)
-            # imbin[:, props[j].centroid[1].astype(np.uint8)] = abs(imbin[:, props[j].centroid[1].astype(np.uint8)] - 1)
-            # imbin[props[j].centroid[0].astype(np.uint8), :] = abs(imbin[props[j].centroid[0].astype(np.uint8), :] - 1)
-            # print('Centroid\t' + str(props[j].centroid))
-            # print('Perimeter\t' + str(props[j].perimeter))
-            # print('Area\t\t' + str(props[j].area))
+        ###< convert color space to gray
+        gray_image0 = cv2.cvtColor(denoised_image0, cv2.COLOR_BGR2GRAY)
+        gray_image1 = cv2.cvtColor(denoised_image1, cv2.COLOR_BGR2GRAY)
+
+        _, gray_image0 = cv2.threshold(gray_image0, 120, 255, cv2.THRESH_BINARY)
+        _, gray_image1 = cv2.threshold(gray_image1, 105, 255, cv2.THRESH_BINARY)
+
+        kernel = np.ones((5,5),np.uint8)
+        gray_image0 = cv2.morphologyEx(gray_image0.astype(np.uint8), cv2.MORPH_OPEN, kernel)
+        gray_image1 = cv2.morphologyEx(gray_image1.astype(np.uint8), cv2.MORPH_OPEN, kernel)
+        gray_image0 = cv2.morphologyEx(gray_image0.astype(np.uint8), cv2.MORPH_CLOSE, kernel)
+        gray_image1 = cv2.morphologyEx(gray_image1.astype(np.uint8), cv2.MORPH_CLOSE, kernel)
+
+        contours0, hierarchy = cv2.findContours(gray_image0, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        contours1, hierarchy = cv2.findContours(gray_image1, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
+        cv2.drawContours(cropped_image0, contours0, -1, (150,150,150), 2)
+        cv2.drawContours(cropped_image1, contours1, -1, (150,150,150), 2)
         
         try: 
-            cv2.imshow(winname0, cv2.rotate(image0, cv2.ROTATE_90_COUNTERCLOCKWISE))
+            cv2.imshow(winname0, cropped_image0)
         except:
             rospy.loginfo("temassizlik 0")
 
         try:
-            cv2.imshow(winname1, cv2.rotate(image1, cv2.ROTATE_90_COUNTERCLOCKWISE))
+            cv2.imshow(winname1, cropped_image1)
         except:
             rospy.loginfo("temassizlik 1")
 
-        cv2.imwrite('/home/gulec/hakan_images_auto_20ms/c'+str(captured_pics)+'_left.png',cv2.rotate(image0, cv2.ROTATE_90_COUNTERCLOCKWISE))
-        cv2.imwrite('/home/gulec/hakan_images_auto_20ms/c'+str(captured_pics)+'_right.png',cv2.rotate(image0, cv2.ROTATE_90_COUNTERCLOCKWISE))
-        captured_pics += 1
-
-        # if cv2.waitKey(1) & 0xFF == ord('y'): #save on pressing 'y'
-        #     rospy.loginfo("bastin") 
-        #     cv2.imwrite('/home/gulec/hakan_images/c'+str(captured_pics)+'_left.png',cv2.rotate(image0, cv2.ROTATE_90_COUNTERCLOCKWISE))
-        #     cv2.imwrite('/home/gulec/hakan_images/c'+str(captured_pics)+'_right.png',cv2.rotate(image0, cv2.ROTATE_90_COUNTERCLOCKWISE))
-        #     captured_pics += 1
         if cv2.waitKey(50) & 0xFF == ord('q'):
             rospy.loginfo("kapatmaya bastin")
             break
+
+
+    # # while(True):
+
+    #     # toc = time.clock()
+    #     # print(toc - tic)
+    #     # tic = toc
+    #     ret0, image0 = cap0.read()
+    #     #cap0.release()
+    #     ret1, image1 = cap1.read()
+
+    #     ###< rotate the image 90 degrees counterclockwise
+    #     rotated_image0 = cv2.rotate(image0, cv2.ROTATE_90_COUNTERCLOCKWISE)
+    #     rotated_image1 = cv2.rotate(image1, cv2.ROTATE_90_COUNTERCLOCKWISE)
+
+    #     ###< crop the petri cover part of the image
+    #     cropped_image0 = rotated_image0[235:345, 210:350]
+    #     cropped_image1 = rotated_image1[235:345, 210:350]
+
+    #     dst0 = cv2.fastNlMeansDenoisingColored(cropped_image0,None,8,8,7,15)
+
+    #     hsv_cropped_image0 = cv2.cvtColor(dst0, cv2.COLOR_BGR2HSV)
+    #     hsv_cropped_image0_hue = hsv_cropped_image0[:, :, 0]
+    #     hsv_cropped_image1 = cv2.cvtColor(cropped_image1, cv2.COLOR_BGR2HSV)
+    #     hsv_cropped_image1_hue = hsv_cropped_image1[:, :, 0]
+        
+    #     lower = np.array([80,0,0])
+    #     upper = np.array([110,100,110])
+    #     mask = cv2.inRange(hsv_cropped_image1, lower, upper)
+
+    #     ###< convert color space to gray
+    #     gray_image0 = cv2.cvtColor(dst0, cv2.COLOR_BGR2GRAY)
+    #     # gray_image1 = cv2.cvtColor(hsv_cropped_image1, cv2.COLOR_BGR2GRAY)
+
+    #     _, imbin0 = cv2.threshold(gray_image0, 135, 255, cv2.THRESH_BINARY)
+    #     # imbin0 = cv2.flip(cv2.transpose(imbin0), 1)
+
+    #     # _, imbin1 = cv2.threshold(hsv_cropped_image1, 87, 255, cv2.THRESH_BINARY)
+    #     # imbin1 = cv2.flip(cv2.transpose(imbin1), 1)
+
+    #     kernel = np.ones((9, 9),np.uint8)
+        
+    #     # imbin0 = cv2.morphologyEx(imbin0.astype(np.uint8), cv2.MORPH_OPEN, kernel)
+    #     imbin0 = cv2.morphologyEx(imbin0.astype(np.uint8), cv2.MORPH_CLOSE, kernel)
+    #     # label_img0 = measure.label(imbin0, connectivity=imbin0.ndim)
+    #     # props0 = measure.regionprops(label_img0)
+
+    #     contours, hierarchy = cv2.findContours(imbin0, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+
+    #     cv2.drawContours(cropped_image0, contours, 0, (150,150,150), 2)
+    #     mu = cv2.moments(contours[0])
+    #     mc = (mu['m10'] / (mu['m00'] + 1e-5), mu['m01'] / (mu['m00'] + 1e-5))
+    #     rospy.loginfo(mc)
+        
+
+    #     # imbin1 = cv2.morphologyEx(mask.astype(np.uint8), cv2.MORPH_OPEN, kernel)
+    #     # imbin1 = cv2.morphologyEx(mask.astype(np.uint8), cv2.MORPH_CLOSE, kernel)
+    #     # label_img1 = measure.label(imbin1, connectivity=imbin1.ndim)
+    #     # props1 = measure.regionprops(label_img1)
+        
+    #     # hsv_cropped_image1 = cv2.morphologyEx(hsv_cropped_image1.astype(np.uint8), cv2.MORPH_OPEN, kernel)
+    #     # hsv_cropped_image1 = cv2.morphologyEx(hsv_cropped_image1.astype(np.uint8), cv2.MORPH_CLOSE, kernel)
+
+    #     # fgMask0 = backsub.apply(gray_image0)
+    #     # fgMask1 = backsub.apply(gray_image1)
+
+        
+    #     ###< convert color space to hsv
+    #     # hsv_image0 = cv2.cvtColor(cropped_image0, cv2.COLOR_BGR2HSV)
+    #     # hsv_image1 = cv2.cvtColor(cropped_image1, cv2.COLOR_BGR2HSV)
+
+    #     # imgray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+
+    #     # # thresh = filters.threshold_otsu(imgray)
+    #     # ret, imbin = cv2.threshold(imgray[440:590,300:700], 25, 255, cv2.THRESH_BINARY)
+    #     # imbin = cv2.flip(cv2.transpose(imbin), 1)
+
+    #     # kernel = np.ones((10,10),np.uint8)
+    #     # imbin = cv2.morphologyEx(imbin.astype(np.uint8), cv2.MORPH_OPEN, kernel)
+    #     # imbin = cv2.morphologyEx(imbin.astype(np.uint8), cv2.MORPH_CLOSE, kernel)
+    #     # label_img = measure.label(imbin, connectivity=imbin.ndim)
+    #     # props = measure.regionprops(label_img)
+
+    #     # for j in range(len(props)):
+    #         # xRayCoords.data = [props[j].centroid[1], props[j].centroid[0]] # [x,y]
+    #         # pubXrayCoords.publish(xRayCoords)
+    #         # rospy.loginfo("I published. %s" % xRayCoords.data)
+    #         # imbin[:, props[j].centroid[1].astype(np.uint8)] = abs(imbin[:, props[j].centroid[1].astype(np.uint8)] - 1)
+    #         # imbin[props[j].centroid[0].astype(np.uint8), :] = abs(imbin[props[j].centroid[0].astype(np.uint8), :] - 1)
+    #         # print('Centroid\t' + str(props[j].centroid))
+    #         # print('Perimeter\t' + str(props[j].perimeter))
+    #         # print('Area\t\t' + str(props[j].area))
+        
+    #     try: 
+    #         # cv2.imshow(winname0, cropped_image0)
+    #         cv2.imshow(winname0, imbin0)
+    #     except:
+    #         rospy.loginfo("temassizlik 0")
+
+    #     try:
+    #         # cv2.imshow(winname1, cropped_image1)
+    #         cv2.imshow(winname1, cropped_image0)
+    #     except:
+    #         rospy.loginfo("temassizlik 1")
+
+    #     #cv2.imwrite('/home/gulec/hakan_images_auto_20ms/c'+str(captured_pics)+'_left.png',cv2.rotate(image0, cv2.ROTATE_90_COUNTERCLOCKWISE))
+    #     #cv2.imwrite('/home/gulec/hakan_images_auto_20ms/c'+str(captured_pics)+'_right.png',cv2.rotate(image0, cv2.ROTATE_90_COUNTERCLOCKWISE))
+    #     #captured_pics += 1
+
+    #     # if cv2.waitKey(1) & 0xFF == ord('y'): #save on pressing 'y'
+    #     #     rospy.loginfo("bastin") 
+    #     #     cv2.imwrite('/home/gulec/hakan_images/c'+str(captured_pics)+'_left.png',cv2.rotate(image0, cv2.ROTATE_90_COUNTERCLOCKWISE))
+    #     #     cv2.imwrite('/home/gulec/hakan_images/c'+str(captured_pics)+'_right.png',cv2.rotate(image0, cv2.ROTATE_90_COUNTERCLOCKWISE))
+    #     #     captured_pics += 1
+    #     if cv2.waitKey(50) & 0xFF == ord('q'):
+    #         rospy.loginfo("kapatmaya bastin")
+    #         break
 
         r.sleep()
