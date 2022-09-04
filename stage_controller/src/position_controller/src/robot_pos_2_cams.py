@@ -120,9 +120,14 @@ if __name__ == '__main__':
         bin_image1 = cv2.morphologyEx(bin_image1.astype(np.uint8), cv2.MORPH_CLOSE, kernel)
 
         contours0, hierarchy = cv2.findContours(bin_image0, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-        # rospy.loginfo(len(contours0))
+        # rospy.loginfo(contours0)
         contours1, hierarchy = cv2.findContours(bin_image1, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
-        # rospy.loginfo(len(contours1))
+        # rospy.loginfo(contours1)
+        robot0_contour = contours0[1]
+        # print(robot0_contour)
+        robot0_y = (np.min(robot0_contour[:,:,0]) + np.max(robot0_contour[:,:,0]))/2
+        robot0_x = (np.min(robot0_contour[:,:,1]) + np.max(robot0_contour[:,:,1]))/2
+        rospy.loginfo((robot0_x, robot0_y))
 
         cv2.drawContours(cropped_image0, contours0, -1, (150,150,150), 2)
         cv2.drawContours(cropped_image1, contours1, -1, (150,150,150), 2)
