@@ -134,7 +134,7 @@ if __name__ == '__main__':
     s2.home()
 
     # Initial offset of stages:     -X-                      -Y-                     -Z-
-    initial_offset = [int(10000000.*150/24.44), int(10000000.*250/24.44), int(10000000.*100 /24.44)]
+    initial_offset = [int(10000000.*162/24.44), int(10000000.*278/24.44), int(10000000.*35 /24.44)]
     p0.send_message(MGMSG_MOT_MOVE_ABSOLUTE_long(s0._chan_ident, initial_offset[0]))
     p1.send_message(MGMSG_MOT_MOVE_ABSOLUTE_long(s1._chan_ident, initial_offset[1]))
     p2.send_message(MGMSG_MOT_MOVE_ABSOLUTE_long(s2._chan_ident, initial_offset[2]))
