@@ -24,21 +24,22 @@ ros::NodeHandle nh;
 
 void messageResponse(const std_msgs::Float64MultiArray& step_msg)
 {
-  float rad2step = 3200.0/3.0/3.1416;
-  newPos[0] = (long)(step_msg.data[0]*rad2step);
+  float rad2step0 = 32000.0/9.0/3.1416;
+  float rad2step1 = 13200.0/3.1416;
+  newPos[0] = (long)(step_msg.data[0]*rad2step0);
   if(newPos[0] > absolute[0]){ // Set velocity of StepperA
-    vel[0] = step_msg.data[1]*rad2step;
+    vel[0] = step_msg.data[1]*rad2step0;
   }
   else{
-    vel[0] = -step_msg.data[1]*rad2step;
+    vel[0] = -step_msg.data[1]*rad2step0;
   }
   
-  newPos[1] = (long)(step_msg.data[2]*rad2step);
+  newPos[1] = (long)(step_msg.data[2]*rad2step1);
   if(newPos[1] > absolute[1]){ // Set velocity of StepperB
-    vel[1] = step_msg.data[3]*rad2step;
+    vel[1] = step_msg.data[3]*rad2step1;
   }
   else{
-    vel[1] = -step_msg.data[3]*rad2step;
+    vel[1] = -step_msg.data[3]*rad2step1;
   }
 
   absolute[0] = newPos[0];
@@ -57,7 +58,7 @@ void setup() {
   // Configure each stepper
   stepperA.setMaxSpeed(maxMotorSpeed);
   stepperA.setEnablePin(EN1_PIN);
-  stepperA.setPinsInverted(true, false, false);
+  stepperA.setPinsInverted(false, false, false);
   stepperA.enableOutputs();
   
   stepperB.setMaxSpeed(maxMotorSpeed);

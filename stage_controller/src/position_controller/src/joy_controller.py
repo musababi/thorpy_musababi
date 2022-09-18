@@ -13,14 +13,14 @@ def getInitialCoordinates(data):
 
 def callback(data):
     global v_x, v_y, v_z, w_x, w_z, coords     # v_z is defined here
-    v_x = (1 + 10 * data.buttons[5] + 2 * data.buttons[4]) * data.axes[3]
-    v_y = (1 + 10 * data.buttons[5] + 2 * data.buttons[4]) * data.axes[4]
+    v_x = -(1 + 6 * data.buttons[5] + 2 * data.buttons[4]) * data.axes[3]
+    v_y = (1 + 6 * data.buttons[5] + 2 * data.buttons[4]) * data.axes[4]
     v_z = (1 + 10 * data.buttons[5] + 2 * data.buttons[4]) * data.axes[1] / 2
     # w_x = (0.2 + 4 * data.buttons[5] + 0.8 * data.buttons[4]) * data.axes[7]
     # w_z = (0.2 + 4 * data.buttons[5] + 0.8 * data.buttons[4]) * data.axes[6]
     # acceleration for the steppers is R2 
-    w_x = - (data.axes[5] - 1) * data.axes[7] / 2
-    w_z = (data.axes[5] - 1) * data.axes[6] / 2            
+    w_x = - (data.axes[5] - 1) * data.axes[7] / 4
+    w_z = (data.axes[5] - 1) * data.axes[6] / 8            
 
 
     coords.data[1] = abs(v_x)

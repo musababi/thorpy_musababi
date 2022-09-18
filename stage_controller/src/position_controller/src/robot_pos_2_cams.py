@@ -82,13 +82,17 @@ if __name__ == '__main__':
 
     # cap0 = cv2.VideoCapture(cam)
     cap0 = cv2.VideoCapture('/dev/video4')
-    cap1 = cv2.VideoCapture('/dev/video2')
+    cap1 = cv2.VideoCapture('/dev/video0')
     
     cap0.set(cv2.CAP_PROP_FRAME_WIDTH, 1024)
     cap0.set(cv2.CAP_PROP_FRAME_HEIGHT, 768)
     
     cap1.set(cv2.CAP_PROP_FRAME_WIDTH, 1024)
     cap1.set(cv2.CAP_PROP_FRAME_HEIGHT, 768)
+
+    focus = 255  # min: 0, max: 255, increment:5
+    print(cap1.set(28, focus))
+     
 
     # winname0 = cam
     winname0 = 'Screen Capture 0'
@@ -145,7 +149,7 @@ if __name__ == '__main__':
         _, bin_image0 = cv2.threshold(gray_image0, gray_image0.min() + 20, 255, cv2.THRESH_BINARY)
         _, bin_image1 = cv2.threshold(gray_image1, gray_image1.min() + 25, 255, cv2.THRESH_BINARY)
 
-        kernel = np.ones((4,7),np.uint8)
+        kernel = np.ones((3,3),np.uint8)
         bin_image0 = cv2.morphologyEx(bin_image0.astype(np.uint8), cv2.MORPH_OPEN, kernel)
         bin_image1 = cv2.morphologyEx(bin_image1.astype(np.uint8), cv2.MORPH_OPEN, kernel)
         bin_image0 = cv2.morphologyEx(bin_image0.astype(np.uint8), cv2.MORPH_CLOSE, kernel)

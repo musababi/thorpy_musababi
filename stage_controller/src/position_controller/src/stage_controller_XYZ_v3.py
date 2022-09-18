@@ -33,11 +33,11 @@ def discover_stages():
 def callback_new(data):
     global s0_pos, s1_pos, s2_pos
     # Structure of data: [theta, w, pos0, vel0, pos1, vel1] in rad, rad/s, mm, mm/s
-    s0_pos = 10000000.*data.data[0]/24.44 + initial_offset[0]
+    s0_pos = -10000000.*data.data[0]/24.44 + initial_offset[0]
     s0_vel = 5000.*data.data[1]
     s1_pos = 10000000.*data.data[2]/24.44 + initial_offset[1]
     s1_vel = 5000.*data.data[3]
-    s2_pos = 10000000.*data.data[4]/24.44 + initial_offset[2]
+    s2_pos = -10000000.*data.data[4]/24.44 + initial_offset[2]
     s2_vel = 5000.*data.data[5]
 
     if s0_vel != s0.max_velocity:
@@ -57,6 +57,10 @@ def callback_new(data):
     pubStepper.publish(stepper_pos_vel)
 
     # rospy.loginfo("Received coordinates: %s" % data.data)
+
+def callback_cam(data):
+    
+    pass
 
 if __name__ == '__main__':
     from thorpy.message import *
@@ -115,7 +119,7 @@ if __name__ == '__main__':
     p1 = s1._port # serial port of stage 1
     p2 = s2._port # serial port of stage 2
 
-    s0._set_homeparams(10000, 0, s0.home_limit_switch, s0.home_offset_distance)
+    s0._set_homeparams(10000, 1, s0.home_limit_switch, s0.home_offset_distance)
     s1._set_homeparams(10000, 1, s1.home_limit_switch, s1.home_offset_distance)
     s2._set_homeparams(10000, 1, s2.home_limit_switch, s2.home_offset_distance)
     
