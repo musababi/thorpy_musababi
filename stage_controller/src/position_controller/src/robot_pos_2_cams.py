@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+from ssl import _create_default_https_context
 import rospy
 from std_msgs.msg import Float64MultiArray, String
 from skimage import io, color, filters, measure
@@ -20,34 +21,11 @@ coefficient_matrix = coefficient_matrix.reshape((15,3))
 #
 #     stepper_pos_vel.data = [data.data[0], data.data[1]]
 
-### mark the calibration pixel for the alignment of the glass petri
-def mark_petri_calibration_pixel():
-    pass
-
-# class camThread(threading.Thread):
-#     def __init__(self, previewName, camPath):
-#         threading.Thread.__init__(self)
-#         self.previewName = previewName
-#         self.camPath = camPath
-#     def run(self):
-#         print("Starting " + self.previewName)
-#         camPreview(self.previewName, self.camPath)
-
-# def camPreview(previewName, camPath):
-#     cv2.namedWindow(previewName)
-#     cam = cv2.VideoCapture(camPath)
-#     if cam.isOpened():  # try to get the first frame
-#         rval, frame = cam.read()
-#     else:
-#         rval = False
-
-#     while rval:
-#         cv2.imshow(previewName, frame)
-#         rval, frame = cam.read()
-#         key = cv2.waitKey(20)
-#         if key == 27:  # exit on ESC
-#             break
-#     cv2.destroyWindow(previewName)
+def checkPastPresent(present, past):
+    is_consistent = True
+    # if ((present[0] - past[0]) ** 2 + (present[1] - past[1]) ** 2 + (present[2] - past[2]) ** 2) > 25.0:
+    #     is_consistent = False
+    return is_consistent
 
 def append_new_line(file_name, camera, pin_number, robot_x, robot_y):
     """Append given text as a new line at the end of file"""
@@ -74,7 +52,9 @@ if __name__ == '__main__':
 
     pubTwoCamCoords = rospy.Publisher('two_camera_coordinates', Float64MultiArray, queue_size=10)
     TwoCamCoords = Float64MultiArray()
-    TwoCamCoords.data = [0, 0, 0]
+    TwoCamCoords.data = [0.0, 0.0, 0.0, 0]
+    is_contour_detected = False
+    prev_real_coords = np.array([0.0, 0.0, 0.0])
 
     # read_coefficient_matrix()
 
@@ -89,9 +69,12 @@ if __name__ == '__main__':
     
     cap1.set(cv2.CAP_PROP_FRAME_WIDTH, 1024)
     cap1.set(cv2.CAP_PROP_FRAME_HEIGHT, 768)
+    
+    cap1.set(cv2.CAP_PROP_ZOOM, 2)
+    cap1.set(cv2.CAP_PROP_ZOOM, 4)
 
-    focus = 255  # min: 0, max: 255, increment:5
-    print(cap1.set(28, focus))
+    # focus = 255  # min: 0, max: 255, increment:5
+    # print(cap1.set(28, focus))
      
 
     # winname0 = cam
@@ -103,10 +86,8 @@ if __name__ == '__main__':
     cv2.moveWindow(winname1, 10,30)
 
     i = 0
-    dt = 100 # ms
+    dt = 50 # ms
     r = rospy.Rate(1000. / dt)
-
-    # tic = time.clock()
 
     captured_pics = 0 # number of captured pictures 
 
@@ -114,12 +95,22 @@ if __name__ == '__main__':
 
     pin_number=1
 
+    start_consistency = False
+
+    
+    tic = time.time()    
+
     while not rospy.is_shutdown():
-        
+        # tic = time.time()    
         ###< read the images from both cameras
         ret0, image0 = cap0.read()
         ret1, image1 = cap1.read()
 
+        toc = time.time()
+        # rospy.loginfo('Capture time in sec: %2.4f', toc - tic)
+        tic = toc
+        
+        
         ###< rotate the image 90 degrees counterclockwise
         rotated_image0 = cv2.rotate(image0, cv2.ROTATE_90_COUNTERCLOCKWISE)
         rotated_image1 = cv2.rotate(image1, cv2.ROTATE_90_COUNTERCLOCKWISE)
@@ -128,13 +119,18 @@ if __name__ == '__main__':
         cropped_image0 = rotated_image0[325:530, 290:595]
         cropped_image1 = rotated_image1[330:535, 245:550]
 
+        # tic = time.time()
+
         ###< denoised cropped images
-        denoised_image0 = cv2.fastNlMeansDenoisingColored(cropped_image0,None,10,10,7,15)
-        denoised_image1 = cv2.fastNlMeansDenoisingColored(cropped_image1,None,10,10,7,15)
+        # denoised_image0 = cv2.fastNlMeansDenoisingColored(cropped_image0,None,10,10,7,15)
+        # denoised_image1 = cv2.fastNlMeansDenoisingColored(cropped_image1,None,10,10,7,15)
+
+        # toc = time.time()
+        # rospy.loginfo('Period in sec: %2.4f', toc - tic)
 
         ###< convert color space to gray
-        gray_image0 = cv2.cvtColor(denoised_image0, cv2.COLOR_BGR2GRAY)
-        gray_image1 = cv2.cvtColor(denoised_image1, cv2.COLOR_BGR2GRAY)
+        gray_image0 = cv2.cvtColor(cropped_image0, cv2.COLOR_BGR2GRAY)
+        gray_image1 = cv2.cvtColor(cropped_image1, cv2.COLOR_BGR2GRAY)
         # rospy.loginfo('min values')
         # rospy.loginfo(gray_image0.min())
         # rospy.loginfo(gray_image1.min())
@@ -146,14 +142,21 @@ if __name__ == '__main__':
         # rospy.loginfo((int(argmin0/shape0[1]), int(argmin0%shape0[1])))
         # rospy.loginfo((int(argmin1/shape1[1]), int(argmin1%shape1[1])))
         # rospy.loginfo(gray_image1.argmin())
-        _, bin_image0 = cv2.threshold(gray_image0, gray_image0.min() + 20, 255, cv2.THRESH_BINARY)
+        _, bin_image0 = cv2.threshold(gray_image0, gray_image0.min() + 25, 255, cv2.THRESH_BINARY)
         _, bin_image1 = cv2.threshold(gray_image1, gray_image1.min() + 25, 255, cv2.THRESH_BINARY)
+
+        # tic = time.time()
 
         kernel = np.ones((3,3),np.uint8)
         bin_image0 = cv2.morphologyEx(bin_image0.astype(np.uint8), cv2.MORPH_OPEN, kernel)
         bin_image1 = cv2.morphologyEx(bin_image1.astype(np.uint8), cv2.MORPH_OPEN, kernel)
         bin_image0 = cv2.morphologyEx(bin_image0.astype(np.uint8), cv2.MORPH_CLOSE, kernel)
         bin_image1 = cv2.morphologyEx(bin_image1.astype(np.uint8), cv2.MORPH_CLOSE, kernel)
+
+        # toc = time.time()
+        # rospy.loginfo('Period in sec: %2.4f', toc - tic)
+
+        # tic = time.time()
 
         try:
             contours0, hierarchy = cv2.findContours(bin_image0, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
@@ -177,25 +180,59 @@ if __name__ == '__main__':
             # y1 = (np.min(robot1_contour[:,:,0]) + np.max(robot1_contour[:,:,0]))/2
             # x1 = (np.min(robot1_contour[:,:,1]) + np.max(robot1_contour[:,:,1]))/2
             # # rospy.loginfo((x1, y1))
-            X_matrix = np.array([x0*x1, x0*x0, x0, y0*x1, y0*y0, y0, x1*y1, x1*x1, x1, x0*y0, y1*y1, y1, x0*y1, y0*y1, 1])
+            X_matrix = np.array([x0*x1, x0*x0, x0, y0*x1, y0*y0, y0, x1*y1, x1*x1, x1, x0*y0, y1*y1, y1, x0*y1, y0*y1, 1], dtype=float)
             # print(X_matrix)
             real_coordinates = np.matmul(X_matrix, coefficient_matrix)
+
             
+
+            if start_consistency == False:
+                prev_real_coords[0] = real_coordinates[0]
+                prev_real_coords[1] = real_coordinates[1]
+                prev_real_coords[2] = real_coordinates[2]
+                start_consistency = True
+            
+            if start_consistency == True:
+                is_contour_detected = checkPastPresent(real_coordinates, prev_real_coords)
+
+            if is_contour_detected == True and (cv2.contourArea(robot0_contour) > 400.0 or cv2.contourArea(robot1_contour) > 400.0 or cv2.contourArea(robot0_contour) < 50.0 or cv2.contourArea(robot1_contour) < 50.0):
+                is_contour_detected = False 
+
+            if is_contour_detected == True:
+                p = 0.2
+                rospy.loginfo('Real coordinates updated!')
+                prev_real_coords[0] = (1-p)*prev_real_coords[0] + p*real_coordinates[0]
+                prev_real_coords[1] = (1-p)*prev_real_coords[1] + p*real_coordinates[1]
+                prev_real_coords[2] = (1-p)*prev_real_coords[2] + p*real_coordinates[2]
+
             print(real_coordinates)
+            TwoCamCoords.data[0] = prev_real_coords[0]
+            TwoCamCoords.data[1] = prev_real_coords[1]
+            TwoCamCoords.data[2] = prev_real_coords[2]
+            TwoCamCoords.data[3] = is_contour_detected
 
-            TwoCamCoords.data[0] = real_coordinates[0]
-            TwoCamCoords.data[1] = real_coordinates[1]
-            TwoCamCoords.data[2] = real_coordinates[2]
-
-            pubTwoCamCoords.publish(TwoCamCoords)
-            rospy.loginfo("I published. %s" % TwoCamCoords.data)            
-
+            pubTwoCamCoords.publish(TwoCamCoords)    
+            # rospy.loginfo('Contour Area - 0: %3.2f', cv2.contourArea(robot0_contour))
+            # rospy.loginfo('Contour Area - 1: %3.2f', cv2.contourArea(robot1_contour))        
+            rospy.loginfo(checkPastPresent(real_coordinates, prev_real_coords))
             cv2.drawContours(cropped_image0, contours0, 1, (150,150,150), 2)
             cv2.drawContours(cropped_image1, contours1, 1, (150,150,150), 2)
         except Exception as e:
             rospy.logerr(e)
             rospy.loginfo("couldnt detect contours")
+            is_contour_detected = 0.0
+            TwoCamCoords.data[0] = 0.0
+            TwoCamCoords.data[1] = 0.0
+            TwoCamCoords.data[2] = 0.0
+            TwoCamCoords.data[3] = is_contour_detected
+            pubTwoCamCoords.publish(TwoCamCoords)
             pass
+
+        # toc = time.time()
+        # rospy.loginfo('Period in sec: %2.4f', toc - tic)
+
+        
+        # tic = time.time()
 
         try: 
             cv2.imshow(winname0, cropped_image0)
@@ -206,28 +243,36 @@ if __name__ == '__main__':
             cv2.imshow(winname1, cropped_image1)
         except:
             rospy.loginfo("temassizlik 1")
-
-        if cv2.waitKey(50) & 0xFF == ord('q'):
+        
+        if cv2.waitKey(5) & 0xFF == ord('q'):
             rospy.loginfo("kapatmaya bastin")
             break
-        if cv2.waitKey(50) & 0xFF == ord('y'): #save on pressing 'y'
-            rospy.loginfo("fotoya bastin")
-            rospy.loginfo(pin_number)
-            rospy.loginfo(np.min(robot0_contour[:,:,0]))
-            rospy.loginfo(np.max(robot0_contour[:,:,0]))
-            rospy.loginfo(np.min(robot0_contour[:,:,1]))
-            rospy.loginfo(np.max(robot0_contour[:,:,1]))
-            cropped_image0[int(y0)][int(x0)] = (255, 255, 255)
-            cv2.imwrite('/home/gulec/new_data/data3/c'+str(pin_number)+'_left.png',cropped_image0)
-            append_new_line('/home/gulec/new_data/data3/cover3.txt', 'l', pin_number, x0, y0)
-            
-            cropped_image1[int(y1)][int(x1)] = (255, 255, 255)
-            cv2.imwrite('/home/gulec/new_data/data3/c'+str(pin_number)+'_right.png',cropped_image1)
-            append_new_line('/home/gulec/new_data/data3/cover3.txt', 'r', pin_number, x1, y1)
 
-            # pin_number -= 1
-            # cv2.imwrite('/home/gulec/hakan_images/c'+str(captured_pics)+'_right.png',cv2.rotate(image0, cv2.ROTATE_90_COUNTERCLOCKWISE))
+        rospy.loginfo('Contour detection: %2.2f', is_contour_detected)
+        # # tic = time.time()
+        # # if cv2.waitKey(5) & 0xFF == ord('y'): #save on pressing 'y'
+        # #     rospy.loginfo("fotoya bastin")
+        # #     rospy.loginfo(pin_number)
+        # #     rospy.loginfo(np.min(robot0_contour[:,:,0]))
+        # #     rospy.loginfo(np.max(robot0_contour[:,:,0]))
+        # #     rospy.loginfo(np.min(robot0_contour[:,:,1]))
+        # #     rospy.loginfo(np.max(robot0_contour[:,:,1]))
+        # #     cropped_image0[int(y0)][int(x0)] = (255, 255, 255)
+        # #     cv2.imwrite('/home/gulec/new_data/data3/c'+str(pin_number)+'_left.png',cropped_image0)
+        # #     append_new_line('/home/gulec/new_data/data3/cover3.txt', 'l', pin_number, x0, y0)
             
+        # #     cropped_image1[int(y1)][int(x1)] = (255, 255, 255)
+        # #     cv2.imwrite('/home/gulec/new_data/data3/c'+str(pin_number)+'_right.png',cropped_image1)
+        # #     append_new_line('/home/gulec/new_data/data3/cover3.txt', 'r', pin_number, x1, y1)
+
+        #     # pin_number -= 1
+        #     # cv2.imwrite('/home/gulec/hakan_images/c'+str(captured_pics)+'_right.png',cv2.rotate(image0, cv2.ROTATE_90_COUNTERCLOCKWISE))
+            
+        # toc = time.time()
+        # rospy.loginfo('Period in sec: %2.4f', toc - tic)
+        # # toc = time.time()
+        # # rospy.loginfo('Period in sec: %2.4f', toc - tic)
+        # # tic = toc
 
     # # while(True):
 

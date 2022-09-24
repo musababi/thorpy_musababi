@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
+import imp
 from thorpy.comm.discovery import discover_stages
 import rospy
 from std_msgs.msg import Float64MultiArray, Int64MultiArray, String, Bool
 import numpy as np
+import time
 # import os
 # from thorpy.comm.port import Port
 # from serial.tools.list_ports import comports
@@ -31,6 +33,7 @@ def discover_stages():
 #     i_got_gCode = True
 
 def callback_new(data):
+    # tic0 = time.time()
     global s0_pos, s1_pos, s2_pos
     # Structure of data: [theta, w, pos0, vel0, pos1, vel1] in rad, rad/s, mm, mm/s
     s0_pos = -10000000.*data.data[0]/24.44 + initial_offset[0]
@@ -40,22 +43,33 @@ def callback_new(data):
     s2_pos = -10000000.*data.data[4]/24.44 + initial_offset[2]
     s2_vel = 5000.*data.data[5]
 
+    # tic1 = time.time()
     if s0_vel != s0.max_velocity:
-        s0._set_velparams(0, s0_vel, s0.acceleration)
-        # s0.max_velocity(s0_vel)
+        # s0._set_velparams(0, s0_vel, 1000000)
+        p0.send_message(MGMSG_MOT_SET_VELPARAMS(chan_ident = s0._chan_ident, min_velocity = int(0), max_velocity = int(s0_vel*4473.92426666), acceleration = 1000000))
     if s1_vel != s1.max_velocity:
-        s1._set_velparams(0, s1_vel, s1.acceleration)
+        # s1._set_velparams(0, s1_vel, 1000000)
+        p1.send_message(MGMSG_MOT_SET_VELPARAMS(chan_ident = s1._chan_ident, min_velocity = int(0), max_velocity = int(s1_vel*4473.92426666), acceleration = 1000000))
     if s2_vel != s2.max_velocity:
-        s2._set_velparams(0, s2_vel, s2.acceleration)
+        # s2._set_velparams(0, s2_vel, 500000)
+        p2.send_message(MGMSG_MOT_SET_VELPARAMS(chan_ident = s2._chan_ident, min_velocity = int(0), max_velocity = int(s2_vel*4473.92426666), acceleration = 1000000))
 
+    # tic2 = time.time()
     # s0.position(int(s0_pos))    
     p0.send_message(MGMSG_MOT_MOVE_ABSOLUTE_long(s0._chan_ident, int(s0_pos)))
     p1.send_message(MGMSG_MOT_MOVE_ABSOLUTE_long(s0._chan_ident, int(s1_pos)))
     p2.send_message(MGMSG_MOT_MOVE_ABSOLUTE_long(s0._chan_ident, int(s2_pos)))
 
+    # tic3 = time.time()
     stepper_pos_vel.data = [data.data[6], data.data[7], data.data[8], data.data[9]]
     pubStepper.publish(stepper_pos_vel)
 
+    # tic4 = time.time()
+    # rospy.loginfo('  Getting Data: %2.4f', tic0 - tic1)
+    # rospy.loginfo('Set velocities: %2.4f', tic1 - tic2)
+    # rospy.loginfo('Send positions: %2.4f', tic2 - tic3)
+    # rospy.loginfo('      Steppers: %2.4f', tic3 - tic4)
+    # rospy.loginfo('    Multiplier: %2.15f', (s0._EncCnt * s0._T * 65536))
     # rospy.loginfo("Received coordinates: %s" % data.data)
 
 def callback_cam(data):
@@ -127,7 +141,7 @@ if __name__ == '__main__':
     #                    vel    acc
     s0._set_velparams(0, 25000, 1000000)
     s1._set_velparams(0, 25000, 1000000)
-    s2._set_velparams(0, 25000, 50000)
+    s2._set_velparams(0, 25000, 500000)
 
     s0.print_state()
     s1.print_state()
